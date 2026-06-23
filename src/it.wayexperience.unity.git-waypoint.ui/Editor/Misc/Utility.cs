@@ -40,11 +40,23 @@ namespace Unity.VersionControl.Git
                 return icon;
             }
 
+            // GW-ICONDEBUG — diagnostica caricamento icone (rimuovere in 0.1.5)
+            try
+            {
+                var dbgEnv = EntryPoint.ApplicationManager.Environment;
+                var ext = dbgEnv.ExtensionInstallPath;
+                var c1 = ext.Combine("IconsAndLogos", filename);
+                var c2 = ext.Parent.Combine("Editor", "IconsAndLogos", filename);
+                Debug.Log($"[GW-ICONDEBUG] req='{filename}' ext='{ext}'\n  c1='{c1}' exists={c1.FileExists()}\n  c2='{c2}' exists={c2.FileExists()}");
+            }
+            catch (Exception dbgEx) { Debug.LogWarning("[GW-ICONDEBUG] " + dbgEx); }
+
             Texture2D texture2D;
             using (var stream = AssemblyResources.ToStream(ResourceType.Icon, filename, EntryPoint.ApplicationManager.Environment))
             {
                 texture2D = stream.ToTexture2D();
             }
+            Debug.Log($"[GW-ICONDEBUG] '{filename}' -> texture {(texture2D == null ? "NULL" : texture2D.width + "x" + texture2D.height)}");
 
             if (texture2D != null)
             {
