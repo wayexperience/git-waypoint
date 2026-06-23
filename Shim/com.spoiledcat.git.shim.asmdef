@@ -1,0 +1,12 @@
+{
+    "name": "it.wayexperience.unity.git-waypoint.shim",
+    "references": [
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "autoReferenced": false,
+    "allowUnsafeCode": false
+}
