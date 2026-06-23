@@ -1,0 +1,22 @@
+{
+    "name": "it.wayexperience.unity.git-waypoint.ui.tests",
+    "references": [
+        "Unity.Editor.Tasks",
+        "it.wayexperience.unity.git-waypoint",
+        "it.wayexperience.unity.git-waypoint.ui"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "Unity.Editor.Tasks.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": []
+}

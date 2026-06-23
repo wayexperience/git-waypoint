@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFramework>net471</TargetFramework>
+    <SolutionDir Condition=" '$(SolutionDir)' == '' ">..\..\</SolutionDir>
+    <ProjectGuid>{66A1D219-F61D-4AE4-9BD7-AAEB97276FFF}</ProjectGuid>
+    <RootNamespace>TestUtils</RootNamespace>
+    <AssemblyName>TestUtils</AssemblyName>
+  </PropertyGroup>
+  <Import Project="$(SolutionDir)\common\properties.props" />
+  <Import Project="$(SolutionDir)\common\tests.props" />  
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\it.wayexperience.unity.git-waypoint.api\Api\Api.csproj" />
+    <PackageReference Include="FluentAssertions" Version="5.7.0" PrivateAssets="All" />
+    <PackageReference Include="NSubstitute" Version="4.2.0" PrivateAssets="All" />
+    <PackageReference Include="NUnit" Version="3.12.0" PrivateAssets="All" />
+  </ItemGroup>
+</Project>

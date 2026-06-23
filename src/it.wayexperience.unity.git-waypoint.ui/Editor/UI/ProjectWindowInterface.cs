@@ -1,0 +1,643 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using SpoiledCat.Git;
+using Unity.Editor.Tasks;
+using Unity.Editor.Tasks.Logging;
+using UnityEditor;
+using UnityEngine;
+using Object = UnityEngine.Object;
+
+namespace Unity.VersionControl.Git.UI
+{
+    using IO;
+
+    class ProjectWindowInterface
+    {
+        private const string AssetsMenuRequestLock = "Assets/Request Lock";
+        private const string AssetsMenuReleaseLock = "Assets/Release Lock";
+        private const string AssetsMenuReleaseLockForced = "Assets/Release Lock (forced)";
+
+        private static List<GitStatusEntry> entries = new List<GitStatusEntry>();
+        private static List<GitLock> locks = new List<GitLock>();
+        private static Dictionary<string, int> guids = new Dictionary<string, int>();
+        private static List<string> guidsLocks = new List<string>();
+        private static string currentUsername;
+        internal static string CurrentUsername { get { return currentUsername; } }
+
+        // Optimistic lock display: a file I just asked to lock/unlock is shown immediately, before the
+        // git round-trip and lock-list refresh land, so the UI feels instant. These hold asset GUIDs and
+        // are reconciled against the authoritative lock list in OnLocksUpdate (and cleared by the caller
+        // if the real operation fails). We only ever optimistically lock our own files.
+        private static readonly HashSet<string> optimisticLocks = new HashSet<string>();
+        private static readonly HashSet<string> optimisticUnlocks = new HashSet<string>();
+        // When each optimistic guess was made, so a request that never reports back (hung or a silent
+        // failure) doesn't leave the file stuck on "Acquiring…/Releasing…" forever - see PruneStaleOptimistic.
+        private static readonly Dictionary<string, double> optimisticSince = new Dictionary<string, double>();
+        // Backstop derived from the configured git-command timeout (ms) rather than a magic number. A
+        // lock/unlock plus its follow-up locks refresh are two git commands, each bounded by that
+        // timeout, so anything still pending past 2x has really stalled.
+        private static double OptimisticTimeoutSeconds => ApplicationConfiguration.GitTimeout / 1000.0 * 2;
+        private static double nextOptimisticPrune;
+
+        // guidsLocks is built in lockstep with the locks list (see OnLocksUpdate), so the index lines up.
+        private static bool IsGuidLockedByMe(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return false;
+            if (optimisticUnlocks.Contains(guid))
+                return false;
+            if (optimisticLocks.Contains(guid))
+                return true;
+            if (string.IsNullOrEmpty(currentUsername))
+                return false;
+            int i = guidsLocks.IndexOf(guid);
+            return i >= 0 && i < locks.Count && locks[i].Owner.Name == currentUsername;
+        }
+
+        // Files that have a newer version on the remote we haven't pulled yet ("outdated"), by GUID.
+        // Recomputed after a fetch/pull (see LfsLocksModificationProcessor.RefreshOutdated).
+        private static readonly HashSet<string> outdatedGuids = new HashSet<string>();
+
+        public static bool IsOutdated(string guid)
+        {
+            return !string.IsNullOrEmpty(guid) && outdatedGuids.Contains(guid);
+        }
+
+        public static void SetOutdatedPaths(List<string> repoPaths)
+        {
+            if (manager == null)
+                return;
+            var newSet = new HashSet<string>();
+            foreach (var rp in repoPaths)
+            {
+                var assetPath = rp.ToSPath().RelativeToProject(manager.Environment);
+                var guid = AssetDatabase.AssetPathToGUID(assetPath);
+                if (!string.IsNullOrEmpty(guid))
+                    newSet.Add(guid);
+            }
+            if (newSet.SetEquals(outdatedGuids))
+                return;
+            outdatedGuids.Clear();
+            outdatedGuids.UnionWith(newSet);
+            UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+        }
+
+        // The id of the lock on this repo path, if we know it, so unlock can pass --id and skip the lookup.
+        private static string FindLockId(SPath repositoryPath)
+        {
+            foreach (var l in locks)
+                if (l.Path == repositoryPath)
+                    return l.ID;
+            return null;
+        }
+
+        // The name of whoever holds the lock on this asset, or null if it isn't (server-)locked.
+        // guidsLocks is built in lockstep with the locks list, so the index lines up.
+        private static string GetLockOwnerForGuid(string guid)
+        {
+            if (string.IsNullOrEmpty(guid))
+                return null;
+            int i = guidsLocks.IndexOf(guid);
+            return i >= 0 && i < locks.Count ? locks[i].Owner.Name : null;
+        }
+
+        // Raised when an optimistic (in-flight) lock/unlock guess changes, so views that show pending
+        // state - the Locks panel in particular - can rebuild immediately instead of waiting for the
+        // server round-trip.
+        public static event Action OptimisticChanged;
+
+        private static void NotifyOptimisticChanged()
+        {
+            UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+            var handler = OptimisticChanged;
+            if (handler != null) handler();
+        }
+
+        public static void OptimisticLock(string assetPath)
+        {
+            var guid = AssetDatabase.AssetPathToGUID(assetPath);
+            if (string.IsNullOrEmpty(guid))
+                return;
+            optimisticUnlocks.Remove(guid);
+            if (optimisticLocks.Add(guid))
+            {
+                optimisticSince[guid] = EditorApplication.timeSinceStartup;
+                NotifyOptimisticChanged();
+            }
+        }
+
+        public static void OptimisticUnlock(string assetPath)
+        {
+            var guid = AssetDatabase.AssetPathToGUID(assetPath);
+            if (string.IsNullOrEmpty(guid))
+                return;
+            optimisticLocks.Remove(guid);
+            if (optimisticUnlocks.Add(guid))
+            {
+                optimisticSince[guid] = EditorApplication.timeSinceStartup;
+                NotifyOptimisticChanged();
+            }
+        }
+
+        // Revert an optimistic guess when the real lock/unlock failed.
+        public static void ClearOptimistic(string assetPath)
+        {
+            var guid = AssetDatabase.AssetPathToGUID(assetPath);
+            if (string.IsNullOrEmpty(guid))
+                return;
+            bool changed = optimisticLocks.Remove(guid);
+            changed |= optimisticUnlocks.Remove(guid);
+            optimisticSince.Remove(guid);
+            if (changed)
+                NotifyOptimisticChanged();
+        }
+
+        // Safety net: revert any optimistic lock/unlock the server never confirmed (a hung or silently
+        // failed request), so the file doesn't sit on "Acquiring…/Releasing…" indefinitely. The real
+        // RequestLock/ReleaseLock continuation usually clears it first; this only catches the stragglers.
+        private static void PruneStaleOptimistic()
+        {
+            var now = EditorApplication.timeSinceStartup;
+            if (now < nextOptimisticPrune || optimisticSince.Count == 0)
+                return;
+            nextOptimisticPrune = now + 2;
+
+            List<string> stale = null;
+            foreach (var kv in optimisticSince)
+            {
+                if (now - kv.Value > OptimisticTimeoutSeconds)
+                    (stale ?? (stale = new List<string>())).Add(kv.Key);
+            }
+            if (stale == null)
+                return;
+
+            foreach (var guid in stale)
+            {
+                optimisticLocks.Remove(guid);
+                optimisticUnlocks.Remove(guid);
+                optimisticSince.Remove(guid);
+                Logger.Warning("Optimistic lock state for {0} not confirmed after {1}s; reverting.", guid, OptimisticTimeoutSeconds);
+            }
+            NotifyOptimisticChanged();
+        }
+
+        // Pending state for the Locks panel: a lock/unlock the user just triggered but the server
+        // hasn't confirmed yet. Keyed by the project-relative asset path.
+        public static bool IsPendingLock(string assetPath)
+        {
+            var guid = AssetDatabase.AssetPathToGUID(assetPath);
+            return !string.IsNullOrEmpty(guid) && optimisticLocks.Contains(guid);
+        }
+
+        public static bool IsPendingUnlock(string assetPath)
+        {
+            var guid = AssetDatabase.AssetPathToGUID(assetPath);
+            return !string.IsNullOrEmpty(guid) && optimisticUnlocks.Contains(guid);
+        }
+
+        // Asset paths the user asked to lock that aren't on the server yet - shown as "Acquiring…" rows.
+        public static IEnumerable<string> PendingLockAssetPaths()
+        {
+            foreach (var guid in optimisticLocks)
+            {
+                var assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (!string.IsNullOrEmpty(assetPath))
+                    yield return assetPath;
+            }
+        }
+
+        // THE single path for taking a lock. Everyone - auto-lock on open/save, the project context
+        // menu, the Locks panel - goes through here so the behaviour is identical: show the lock
+        // optimistically right away, send the request, then refresh the lock list on success or revert
+        // the optimistic guess on failure. assetPath is the project-relative path (e.g. "Assets/x.mat").
+        public static void RequestLock(string assetPath, Action<string> onError = null)
+        {
+            if (Repository == null || string.IsNullOrEmpty(assetPath))
+                return;
+            var repositoryPath = assetPath.ToSPath().RelativeToRepository(manager.Environment);
+            OptimisticLock(assetPath);
+            Repository.RequestLock(repositoryPath)
+                .FinallyInUI((success, ex) =>
+                {
+                    // "already created lock" just means the lock we wanted already exists - that's the desired
+                    // state, not an error to alarm the user with. Treat it as success: refresh and move on.
+                    if (success || IsAlreadyLockedError(ex))
+                        Repository.Refresh(CacheType.GitLocks);
+                    else
+                    {
+                        ClearOptimistic(assetPath);
+                        if (onError != null) onError(ex != null ? ex.Message : null);
+                    }
+                })
+                .Start();
+        }
+
+        // THE single path for releasing a lock; mirror of RequestLock.
+        public static void ReleaseLock(string assetPath, bool force, Action<string> onError = null)
+        {
+            if (Repository == null || string.IsNullOrEmpty(assetPath))
+                return;
+            var repositoryPath = assetPath.ToSPath().RelativeToRepository(manager.Environment);
+            OptimisticUnlock(assetPath);
+            // We already hold the lock id, so pass it: git-lfs then skips resolving the path to an id
+            // against the server (a round-trip), roughly halving the unlock time.
+            Repository.ReleaseLock(repositoryPath, FindLockId(repositoryPath), force)
+                .FinallyInUI((success, ex) =>
+                {
+                    // Already unlocked? That's the state we wanted - treat it as success, no alarm.
+                    if (success || IsAlreadyUnlockedError(ex))
+                        Repository.Refresh(CacheType.GitLocks);
+                    else
+                    {
+                        ClearOptimistic(assetPath);
+                        if (onError != null) onError(ex != null ? ex.Message : null);
+                    }
+                })
+                .Start();
+        }
+
+        // git-lfs reports an existing lock as "already created lock" - benign, the file is locked already.
+        private static bool IsAlreadyLockedError(Exception ex)
+        {
+            var m = ex != null ? ex.Message : null;
+            return !string.IsNullOrEmpty(m) && (m.IndexOf("already created lock", StringComparison.OrdinalIgnoreCase) >= 0
+                                                || m.IndexOf("already locked", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        // Unlocking something that isn't locked is benign too - the file is already unlocked.
+        private static bool IsAlreadyUnlockedError(Exception ex)
+        {
+            var m = ex != null ? ex.Message : null;
+            return !string.IsNullOrEmpty(m) && (m.IndexOf("no lock", StringComparison.OrdinalIgnoreCase) >= 0
+                                                || m.IndexOf("unable to find", StringComparison.OrdinalIgnoreCase) >= 0
+                                                || m.IndexOf("not locked", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        // Shared error reporting for an interactive (menu-triggered) lock/unlock.
+        private static void ReportLockError(string title, string error, string permissionMessage)
+        {
+            if (!string.IsNullOrEmpty(error) && error.Contains("exit status 255"))
+                error = permissionMessage;
+            EditorUtility.DisplayDialog(title, error ?? string.Empty, Localization.Ok);
+        }
+
+        private static IApplicationManager manager;
+        private static bool isBusy = false;
+        private static ILogging logger;
+        private static ILogging Logger { get { return logger = logger ?? LogHelper.GetLogger<ProjectWindowInterface>(); } }
+        private static CacheUpdateEvent lastRepositoryStatusChangedEvent;
+        private static CacheUpdateEvent lastLocksChangedEvent;
+        private static CacheUpdateEvent lastCurrentRemoteChangedEvent;
+        private static IRepository Repository { get { return manager != null ? manager.Environment.Repository : null; } }
+        private static IPlatform Platform { get { return manager != null ? manager.Platform : null; } }
+        private static bool IsInitialized { get { return Repository != null; } }
+
+        public static void Initialize(IApplicationManager theManager)
+        {
+            EditorApplication.projectWindowItemOnGUI -= OnProjectWindowItemGUI;
+            EditorApplication.projectWindowItemOnGUI += OnProjectWindowItemGUI;
+            EditorApplication.update -= PruneStaleOptimistic;
+            EditorApplication.update += PruneStaleOptimistic;
+
+            manager = theManager;
+
+            //Platform.Keychain.ConnectionsChanged += UpdateCurrentUsername;
+            UpdateCurrentUsername();
+
+            if (IsInitialized)
+            {
+                Repository.StatusEntriesChanged += RepositoryOnStatusEntriesChanged;
+                Repository.LocksChanged += RepositoryOnLocksChanged;
+                Repository.CurrentRemoteChanged += RepositoryOnCurrentRemoteChanged;
+                ValidateCachedData();
+            }
+        }
+
+        public static Texture2D GetStatusIconForAssetGUID(string guid)
+        {
+            // A file can hold an LFS lock without any working-tree change (e.g. auto-locked on open).
+            // Don't bail when there's no status entry - fall through so a lock-only file still gets an icon.
+            if (!guids.TryGetValue(guid, out int index))
+                index = -1;
+
+            var indexLock = guidsLocks.IndexOf(guid);
+            bool optimisticallyLocked = optimisticLocks.Contains(guid);
+            bool optimisticallyUnlocked = optimisticUnlocks.Contains(guid);
+
+            if (index < 0 && indexLock < 0 && !optimisticallyLocked && !IsOutdated(guid))
+            {
+                return null;
+            }
+
+            GitStatusEntry? gitStatusEntry = null;
+            GitFileStatus status = GitFileStatus.None;
+
+            if (index >= 0 && index < entries.Count)
+            {
+                gitStatusEntry = entries[index];
+                status = gitStatusEntry.Value.Status;
+            }
+
+            var isLocked = (indexLock >= 0 || optimisticallyLocked) && !optimisticallyUnlocked;
+            var texture = Styles.GetStatusBadge(status, isLocked, IsGuidLockedByMe(guid), IsOutdated(guid));
+
+            if (texture == null)
+            {
+                var path = gitStatusEntry.HasValue ? gitStatusEntry.Value.Path : string.Empty;
+                Logger.Warning("Unable to retrieve texture for Guid:{0} EntryPath:{1} Status: {2} IsLocked:{3}", guid, path, status.ToString(), isLocked);
+            }
+
+            return texture;
+        }
+
+        private static bool EnsureInitialized()
+        {
+            if (locks == null)
+                locks = new List<GitLock>();
+            if (entries == null)
+                entries = new List<GitStatusEntry>();
+            if (guids == null)
+                guids = new Dictionary<string, int>();
+            if (guidsLocks == null)
+                guidsLocks = new List<string>();
+            return IsInitialized;
+        }
+
+        private static void ValidateCachedData()
+        {
+            Repository.CheckAndRaiseEventsIfCacheNewer(CacheType.GitStatus, lastRepositoryStatusChangedEvent);
+            Repository.CheckAndRaiseEventsIfCacheNewer(CacheType.GitLocks, lastLocksChangedEvent);
+        }
+
+        private static void RepositoryOnStatusEntriesChanged(CacheUpdateEvent cacheUpdateEvent)
+        {
+            if (!lastRepositoryStatusChangedEvent.Equals(cacheUpdateEvent))
+            {
+                lastRepositoryStatusChangedEvent = cacheUpdateEvent;
+                entries.Clear();
+                entries.AddRange(Repository.CurrentChanges);
+                OnStatusUpdate();
+            }
+        }
+
+        private static void RepositoryOnLocksChanged(CacheUpdateEvent cacheUpdateEvent)
+        {
+            if (!lastLocksChangedEvent.Equals(cacheUpdateEvent))
+            {
+                lastLocksChangedEvent = cacheUpdateEvent;
+                locks = Repository.CurrentLocks;
+                OnLocksUpdate();
+            }
+        }
+
+        private static void RepositoryOnCurrentRemoteChanged(CacheUpdateEvent cacheUpdateEvent)
+        {
+            if (!lastCurrentRemoteChangedEvent.Equals(cacheUpdateEvent))
+            {
+                lastCurrentRemoteChangedEvent = cacheUpdateEvent;
+            }
+        }
+
+        private static void UpdateCurrentUsername()
+        {
+            var username = String.Empty;
+            if (Repository != null)
+            {
+                // The keychain-based lookup below is unfinished upstream. Resolve the LFS lock owner
+                // from `lfs.lockUser` (fall back to user.name) so "locked by me" works.
+                username = ReadGitConfig("lfs.lockUser");
+                if (string.IsNullOrEmpty(username))
+                    username = ReadGitConfig("user.name");
+            }
+
+            currentUsername = username ?? String.Empty;
+        }
+
+        private static string ReadGitConfig(string key)
+        {
+            try
+            {
+                string repoDir = System.IO.Directory.GetParent(Application.dataPath).FullName;
+                var psi = new System.Diagnostics.ProcessStartInfo("git", "config --get " + key)
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = repoDir,
+                };
+                if (System.IO.Path.PathSeparator == ':')
+                {
+                    string current = psi.EnvironmentVariables.ContainsKey("PATH")
+                        ? psi.EnvironmentVariables["PATH"]
+                        : System.Environment.GetEnvironmentVariable("PATH");
+                    psi.EnvironmentVariables["PATH"] = "/opt/homebrew/bin:/usr/local/bin" + (string.IsNullOrEmpty(current) ? "" : (":" + current));
+                }
+                using (var p = System.Diagnostics.Process.Start(psi))
+                {
+                    string output = p.StandardOutput.ReadToEnd();
+                    p.WaitForExit(5000);
+                    return string.IsNullOrEmpty(output) ? null : output.Trim();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        [MenuItem(AssetsMenuRequestLock, true, 10000)]
+        private static bool ContextMenu_CanLock()
+        {
+            if (!EnsureInitialized())
+                return false;
+            if (!Repository.CurrentRemote.HasValue)
+                return false;
+            if (isBusy)
+                return false;
+            return Selection.objects.Any(IsObjectUnlocked);
+        }
+
+        [MenuItem(AssetsMenuReleaseLock, true, 10001)]
+        private static bool ContextMenu_CanUnlock()
+        {
+            if (!EnsureInitialized())
+                return false;
+            if (!Repository.CurrentRemote.HasValue)
+                return false;
+            if (isBusy)
+                return false;
+            return Selection.objects.Any(f => IsObjectLocked(f , true));
+        }
+
+        [MenuItem(AssetsMenuReleaseLockForced, true, 10002)]
+        private static bool ContextMenu_CanUnlockForce()
+        {
+            if (!EnsureInitialized())
+                return false;
+            if (!Repository.CurrentRemote.HasValue)
+                return false;
+            if (isBusy)
+                return false;
+            return Selection.objects.Any(IsObjectLocked);
+        }
+
+        [MenuItem(AssetsMenuRequestLock, false, 10000)]
+        private static void ContextMenu_Lock()
+        {
+            foreach (var selected in Selection.objects.Where(IsObjectUnlocked))
+                RequestLock(AssetDatabase.GetAssetPath(selected),
+                    error => ReportLockError(Localization.RequestLockActionTitle, error, "Failed to lock: no permissions"));
+        }
+
+        [MenuItem(AssetsMenuReleaseLock, false, 10001)]
+        private static void ContextMenu_Unlock()
+        {
+            foreach (var selected in Selection.objects.Where(IsObjectLocked))
+                ReleaseLock(AssetDatabase.GetAssetPath(selected), false,
+                    error => ReportLockError(Localization.ReleaseLockActionTitle, error, "Failed to unlock: no permissions"));
+        }
+
+        [MenuItem(AssetsMenuReleaseLockForced, false, 10002)]
+        private static void ContextMenu_UnlockForce()
+        {
+            foreach (var selected in Selection.objects.Where(IsObjectLocked))
+                ReleaseLock(AssetDatabase.GetAssetPath(selected), true,
+                    error => ReportLockError(Localization.ReleaseLockActionTitle, error, "Failed to unlock: no permissions"));
+        }
+
+        private static bool IsObjectUnlocked(Object selected)
+        {
+            if (selected == null)
+                return false;
+
+            SPath assetPath = AssetDatabase.GetAssetPath(selected).ToSPath();
+            SPath repositoryPath = assetPath.RelativeToRepository(manager.Environment);
+
+            var alreadyLocked = locks.Any(x => repositoryPath == x.Path);
+            if (alreadyLocked)
+                return false;
+
+            GitFileStatus status = GitFileStatus.None;
+            if (entries != null)
+            {
+                status = entries.FirstOrDefault(x => repositoryPath == x.Path.ToSPath()).Status;
+            }
+            return status != GitFileStatus.Untracked && status != GitFileStatus.Ignored;
+        }
+
+        private static bool IsObjectLocked(Object selected)
+        {
+            return IsObjectLocked(selected, false);
+        }
+
+        private static bool IsObjectLocked(Object selected, bool isLockedByCurrentUser)
+        {
+            if (selected == null)
+                return false;
+
+            SPath assetPath = AssetDatabase.GetAssetPath(selected).ToSPath();
+            SPath repositoryPath = assetPath.RelativeToRepository(manager.Environment);
+
+            return locks.Any(x => repositoryPath == x.Path && (!isLockedByCurrentUser || x.Owner.Name == currentUsername));
+        }
+
+        private static void OnLocksUpdate()
+        {
+            var newGuidsLocks = new List<string>();
+            foreach (var lck in locks)
+            {
+                SPath repositoryPath = lck.Path;
+                SPath assetPath = repositoryPath.RelativeToProject(manager.Environment);
+                newGuidsLocks.Add(AssetDatabase.AssetPathToGUID(assetPath));
+            }
+
+            bool changed = !newGuidsLocks.SequenceEqual(guidsLocks);
+            guidsLocks = newGuidsLocks;
+
+            // The authoritative list just arrived: drop optimistic guesses it now reflects (a predicted
+            // lock that showed up, or a predicted unlock whose file is gone), keeping the rest in flight.
+            int optCount = optimisticLocks.Count + optimisticUnlocks.Count;
+            optimisticLocks.RemoveWhere(g => guidsLocks.Contains(g));
+            optimisticUnlocks.RemoveWhere(g => !guidsLocks.Contains(g));
+            changed |= optimisticLocks.Count + optimisticUnlocks.Count != optCount;
+            // Forget timeout timestamps for guesses the server just settled.
+            if (optimisticSince.Count > 0)
+                foreach (var g in new List<string>(optimisticSince.Keys))
+                    if (!optimisticLocks.Contains(g) && !optimisticUnlocks.Contains(g))
+                        optimisticSince.Remove(g);
+
+            // Repaint everything (project window + inspector, so "locked by X" / IsOpenForEdit update) only
+            // when the lock set actually changed - otherwise the periodic poll repaints every tick for nothing.
+            if (changed)
+                UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+        }
+
+        private static void OnStatusUpdate()
+        {
+            // Rebuild from scratch: otherwise a GUID from a previous status keeps a stale index that now
+            // points at a different entry, drawing the wrong status icon on an unrelated (e.g. committed) file.
+            guids.Clear();
+            for (var index = 0; index < entries.Count; ++index)
+            {
+                var guid = AssetDatabase.AssetPathToGUID(entries[index].ProjectPath);
+                guids[guid] = index;
+            }
+
+            AssetDatabase.Refresh();
+        }
+
+        private static void OnProjectWindowItemGUI(string guid, Rect itemRect)
+        {
+            if (!EnsureInitialized())
+                return;
+
+            if (!ApplicationConfiguration.ProjectIconsEnabled)
+                return;
+
+            if (Event.current.type != EventType.Repaint || string.IsNullOrEmpty(guid))
+                return;
+
+            Texture2D texture = GetStatusIconForAssetGUID(guid);
+            if (texture == null)
+                return;
+
+            Rect rect;
+
+            // End of row placement
+            if (itemRect.width > itemRect.height)
+            {
+                rect = new Rect(itemRect.xMax - texture.width, itemRect.y, texture.width,
+                    Mathf.Min(texture.height, EditorGUIUtility.singleLineHeight));
+            }
+            // Corner placement
+            // TODO: Magic numbers that need reviewing. Make sure this works properly with long filenames and wordwrap.
+            else
+            {
+                var scale = itemRect.height / 90f;
+                var size = new Vector2(texture.width * scale, texture.height * scale);
+                size = size / EditorGUIUtility.pixelsPerPoint;
+                var offset = new Vector2(itemRect.width * Mathf.Min(.4f * scale, .2f), itemRect.height * Mathf.Min(.2f * scale, .2f));
+                rect = new Rect(itemRect.center.x - size.x * .5f + offset.x, itemRect.center.y - size.y * .5f + offset.y, size.x, size.y);
+            }
+
+            // Colour is baked into the icon now (green = mine, amber = someone else), so just draw it.
+            GUI.DrawTexture(rect, texture, ScaleMode.ScaleToFit);
+
+            // Hovering the badge explains the state (outdated / who holds the lock), so artists can act
+            // without opening a panel. The label has no visible content; it only carries the tooltip.
+            string tooltip = null;
+            if (IsOutdated(guid))
+                tooltip = "Newer version on the server - pull to update";
+            var owner = GetLockOwnerForGuid(guid);
+            if (!string.IsNullOrEmpty(owner))
+            {
+                var lockTip = owner == currentUsername ? "Locked by you" : "Locked by " + owner;
+                tooltip = tooltip == null ? lockTip : tooltip + "\n" + lockTip;
+            }
+            if (tooltip != null)
+                GUI.Label(rect, new GUIContent(string.Empty, tooltip));
+        }
+    }
+}

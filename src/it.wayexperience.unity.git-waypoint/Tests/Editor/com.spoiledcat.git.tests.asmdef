@@ -1,0 +1,18 @@
+{
+    "name": "it.wayexperience.unity.git-waypoint.tests",
+    "references": [
+        "it.wayexperience.unity.git-waypoint"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": []
+}

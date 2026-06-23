@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFramework>net471</TargetFramework>
+    <SolutionDir Condition=" '$(SolutionDir)' == '' ">..\..\</SolutionDir>
+    <ProjectGuid>{08B87D2A-8CF1-4211-B7AA-5209F00F72F8}</ProjectGuid>
+    <RootNamespace>Tests.CommandLine</RootNamespace>
+    <AssemblyName>CommandLine</AssemblyName>
+    <ApplicationIcon />
+    <OutputType>Exe</OutputType>
+    <StartupObject />
+  </PropertyGroup>
+  <Import Project="$(SolutionDir)\common\properties.props" />
+  <Import Project="$(SolutionDir)\common\tests.props" />  
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\it.wayexperience.unity.git-waypoint.api\Api\Api.csproj" />
+    <ProjectReference Include="..\TestWebServer\TestWebServer.csproj" />
+    <PackageReference Include="SpoiledCat.Unity.SimpleIO" Version="1.0.48" />
+  </ItemGroup>
+</Project>

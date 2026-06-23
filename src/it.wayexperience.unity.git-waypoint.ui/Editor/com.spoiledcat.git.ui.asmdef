@@ -1,0 +1,18 @@
+{
+    "name": "it.wayexperience.unity.git-waypoint.ui",
+    "references": [
+        "Unity.Editor.Tasks",
+        "it.wayexperience.unity.git-waypoint",
+        "it.wayexperience.unity.git-waypoint.shim"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": []
+}

@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+
+    <TargetFramework>net471</TargetFramework>
+    <RootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\'))</RootDir>
+    <PackageName>it.wayexperience.unity.git-waypoint.api</PackageName>
+    <RootNamespace>UnitTests</RootNamespace>
+    <AssemblyName>Unit.Tests</AssemblyName>
+    <PublishTo>$(RootDir)build\packages\</PublishTo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <Configurations>Debug;Release;ReleaseUnity;DebugUnity</Configurations>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>$(DefineConstants);NUNIT;TRACE;DEBUG</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugUnity|AnyCPU'">
+    <DefineConstants>$(DefineConstants);TRACE;DEBUG;UNITY_EDITOR</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants>$(DefineConstants);NUNIT</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseUnity|AnyCPU'">
+    <DefineConstants>$(DefineConstants);UNITY_EDITOR</DefineConstants>
+  </PropertyGroup>
+
+
+  <Import Project="$(SolutionDir)\common\properties.props" />
+  <Import Project="$(SolutionDir)\common\tests.props" />  
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="5.7.0" />
+    <PackageReference Include="NCrunch.Framework" Version="3.17.0" />
+    <PackageReference Include="NSubstitute" Version="4.2.0" />
+    <PackageReference Include="NUnit" Version="3.12.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.13.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TestUtils\TestUtils.csproj" />
+    <ProjectReference Include="..\..\src\it.wayexperience.unity.git-waypoint.api\Api\Api.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+{
+  "name": "it.wayexperience.unity.git-waypoint.api",
+  "displayName": "Git Waypoint API",
+  "description": "Git for Unity API library. This package contains all the functionality of Git for Unity, without any UI. Git for Unity integrates source control into your work with friendly and accessible tools and workflows.",
+  "version": "0.1.0",
+  "license" : "MIT",
+    "author": {
+      "name": "WAY", "email": "mt@16bit.it"
+    },
+    "repository" : {
+      "type" : "git",
+      "url": "https://github.com/wayexperience/git-waypoint.git",
+      "directory": "",
+      "revision": ""
+    },
+    "testPackages": {
+      "it.wayexperience.unity.git-waypoint.api.tests": "0.0.0-placeholder"
+    }
+}

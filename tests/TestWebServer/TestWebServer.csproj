@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFramework>net471</TargetFramework>
+    <SolutionDir Condition=" '$(SolutionDir)' == '' ">..\..\</SolutionDir>
+    <ProjectGuid>{3DD3451C-30FA-4294-A3A9-1E080342F867}</ProjectGuid>
+    <RootNamespace>TestWebServer</RootNamespace>
+    <AssemblyName>TestWebServer</AssemblyName>
+  </PropertyGroup>
+  <Import Project="$(SolutionDir)\common\properties.props" />
+  <Import Project="$(SolutionDir)\common\tests.props" />  
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\it.wayexperience.unity.git-waypoint.api\Api\Api.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="files\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,19 @@
+{
+  "name": "it.wayexperience.unity.git-waypoint",
+  "displayName": "Git Waypoint",
+  "description": "Git for Unity integrates source control into your work with friendly and accessible tools and workflows.",
+  "version": "0.1.0",
+  "license" : "MIT",
+    "author": {
+      "name": "WAY", "email": "mt@16bit.it"
+    },
+    "repository" : {
+      "type" : "git",
+      "url": "https://github.com/wayexperience/git-waypoint.git",
+      "directory": "",
+      "revision": ""
+    },
+    "testPackages": {
+      "it.wayexperience.unity.git-waypoint.tests": "0.0.0-placeholder"
+    }
+}

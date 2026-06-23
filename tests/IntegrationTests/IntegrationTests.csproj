@@ -1,0 +1,78 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFramework>net471</TargetFramework>
+    <RootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\'))</RootDir>
+    <PackageName>it.wayexperience.unity.git-waypoint.api</PackageName>
+    <RootNamespace>IntegrationTests</RootNamespace>
+    <AssemblyName>Integration.Tests</AssemblyName>
+    <PublishTo>$(RootDir)build\packages\</PublishTo>
+    <PackageSource>src\</PackageSource>
+    <PackageSubFolder>\Helpers~\</PackageSubFolder>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Configurations>Debug;Release;ReleaseUnity;DebugUnity</Configurations>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>$(DefineConstants);NUNIT;TRACE;DEBUG</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugUnity|AnyCPU'">
+    <DefineConstants>$(DefineConstants);TRACE;DEBUG;UNITY_EDITOR</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants>$(DefineConstants);NUNIT</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseUnity|AnyCPU'">
+    <DefineConstants>$(DefineConstants);UNITY_EDITOR</DefineConstants>
+  </PropertyGroup>
+
+  <Import Project="$(SolutionDir)\common\tests.props" />  
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="5.7.0" />
+    <PackageReference Include="NCrunch.Framework" Version="3.17.0" />
+    <PackageReference Include="NSubstitute" Version="4.2.0" />
+    <PackageReference Include="NUnit" Version="3.12.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.13.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TestUtils\TestUtils.csproj" />
+    <ProjectReference Include="..\..\src\it.wayexperience.unity.git-waypoint.api\Api\Api.csproj" />
+    <ProjectReference Include="..\TestWebServer\TestWebServer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\$(PackageName)\Tests\Editor\*.cs" Link="Helpers\%(Filename)%(Extension)" Exclude="..\..\src\$(PackageName)\Tests\**\UnityBaseTest.cs" />
+    <Compile Include="**\*.cs" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="TestResults\**" />
+    <EmbeddedResource Remove="TestResults\**" />
+    <None Remove="TestResults\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="IOTestsRepo.zip">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <Import Project="$(SolutionDir)\common\nativelibraries.props" />
+  <ItemGroup>
+    <None Include="$(SolutionDir)\src\it.wayexperience.unity.git-waypoint.api\sfw\win\x64\sfw_x64.dll">
+      <Link>sfw_x64.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="$(SolutionDir)\src\it.wayexperience.unity.git-waypoint.api\sfw\win\x64\pthreadVC2.dll">
+      <Link>pthreadVC2.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Resources\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="UnzipTestResources\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>
