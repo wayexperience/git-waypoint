@@ -165,8 +165,12 @@ namespace Unity.VersionControl.Git
                         unityVersion = Application.unityVersion;
                         unityApplication = EditorApplication.applicationPath;
                         unityApplicationContents = EditorApplication.applicationContentsPath;
-                        extensionInstallPath = DetermineInstallationPath();
                     }
+
+                    // Always re-derive the install path: UPM places git packages in an immutable per-commit
+                    // folder (…@<hash>) that changes on every update, so a cached absolute path goes stale and
+                    // every resource lookup (icons included) would point at the previous install's folder.
+                    extensionInstallPath = DetermineInstallationPath();
 
                     environment.Initialize(extensionInstallPath.ToSPath(), projectPath, unityVersion, unityApplication, unityApplicationContents);
                     SPath? path = null;
