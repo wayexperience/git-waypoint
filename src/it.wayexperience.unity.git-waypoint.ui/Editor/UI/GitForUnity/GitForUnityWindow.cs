@@ -83,6 +83,10 @@ namespace Unity.VersionControl.Git.UI
         bool userSubscribed;
         bool identitySavePending;
 
+        // Settings-tab identity fields + validator, refreshed when the GitUser cache lands asynchronously.
+        TextField settingsNameField, settingsEmailField;
+        Action settingsValidateUser;
+
         // Git installation settings (kept as fields so they refresh after Find/Apply/bundled actions).
         TextField gitPathField, lfsPathField;
         Label gitVersionLabel, lfsVersionLabel;
@@ -395,6 +399,25 @@ namespace Unity.VersionControl.Git.UI
             else if (activeTab == Tab.Locks) RefreshLocks();
             else if (activeTab == Tab.History) RefreshHistory();
             else if (activeTab == Tab.Branches) RefreshBranches();
+            else if (activeTab == Tab.Settings) RefreshSettingsIdentity();
+        }
+
+        // The GitUser cache loads asynchronously, after git is ready (bundled git may need extraction on
+        // first launch). The Settings tab is built once with whatever the cache held then — usually empty —
+        // so push the loaded name/email into the fields when they arrive and re-validate (border + Save).
+        void RefreshSettingsIdentity()
+        {
+            if (settingsNameField == null) return;
+            var u = Env != null ? Env.User : null;
+            if (u != null)
+            {
+                // Don't overwrite a value the user is currently editing.
+                if (settingsNameField.focusController == null || settingsNameField.focusController.focusedElement != settingsNameField)
+                    settingsNameField.SetValueWithoutNotify(u.Name ?? "");
+                if (settingsEmailField.focusController == null || settingsEmailField.focusController.focusedElement != settingsEmailField)
+                    settingsEmailField.SetValueWithoutNotify(u.Email ?? "");
+            }
+            settingsValidateUser?.Invoke();
         }
 
         // ---- Header --------------------------------------------------------------------------------
@@ -1216,9 +1239,9 @@ namespace Unity.VersionControl.Git.UI
 
             // Git user
             var userCard = SettingsCard("Git user", root);
-            var nameField = new TextField { value = user != null ? (user.Name ?? "") : "" }; Roomy(nameField, 24); nameField.style.width = 220;
+            var nameField = settingsNameField = new TextField { value = user != null ? (user.Name ?? "") : "" }; Roomy(nameField, 24); nameField.style.width = 220;
             userCard.Add(SettingsRow("Name", nameField));
-            var emailField = new TextField { value = user != null ? (user.Email ?? "") : "" }; Roomy(emailField, 24); emailField.style.width = 220;
+            var emailField = settingsEmailField = new TextField { value = user != null ? (user.Email ?? "") : "" }; Roomy(emailField, 24); emailField.style.width = 220;
             userCard.Add(SettingsRow("Email", emailField));
             var saveUser = new Button(() =>
             {
@@ -1244,6 +1267,7 @@ namespace Unity.VersionControl.Git.UI
             // Re-assert after Roomy's focus-out handler (which resets the border) so empty stays red.
             nameField.RegisterCallback<FocusOutEvent>(_ => validateUser());
             emailField.RegisterCallback<FocusOutEvent>(_ => validateUser());
+            settingsValidateUser = validateUser;
             validateUser();
 
             // Repository

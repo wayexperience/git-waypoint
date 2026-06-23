@@ -14,7 +14,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/src"
 OUT="$ROOT/build/upm-unified/it.wayexperience.unity.git-waypoint"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.1.1}"
 
 API="$SRC/it.wayexperience.unity.git-waypoint.api"
 UI="$SRC/it.wayexperience.unity.git-waypoint.ui"
@@ -51,15 +51,28 @@ cat > "$OUT/package.json" <<JSON
   "displayName": "Git Waypoint",
   "description": "Git Waypoint: Git for Unity with Perforce-style LFS auto-locking for artists and developers. Bundles the API, editor UI and native file watcher in a single package, and installs a portable Git + Git LFS automatically.",
   "version": "$VERSION",
-  "unity": "2021.3",
+  "unity": "2020.3",
   "license": "MIT",
-  "author": { "name": "WAY", "email": "mt@16bit.it" },
+  "author": { "name": "WAY Experience", "email": "mt@16bit.it" },
   "repository": {
     "type": "git",
     "url": "https://github.com/wayexperience/git-waypoint.git"
   }
 }
 JSON
+
+# Unity ignores files without a .meta inside an immutable (installed) package. The manifest is
+# generated fresh above, so its .meta must be written here with a stable guid.
+echo "==> Writing package.json.meta"
+cat > "$OUT/package.json.meta" <<'META'
+fileFormatVersion: 2
+guid: c638756df8124c3880524e6ffc50eff5
+PackageManifestImporter:
+  externalObjects: {}
+  userData:
+  assetBundleName:
+  assetBundleVariant:
+META
 
 echo "==> Done."
 echo "Package: $OUT"
