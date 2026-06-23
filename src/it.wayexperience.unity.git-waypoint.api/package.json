@@ -2,7 +2,7 @@
   "name": "it.wayexperience.unity.git-waypoint.api",
   "displayName": "Git Waypoint API",
   "description": "Git Waypoint API library: the engine behind Git Waypoint (Git client + LFS auto-locking), with no UI dependency.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "license" : "MIT",
     "author": {
       "name": "WAY Experience", "email": "mt@16bit.it"
