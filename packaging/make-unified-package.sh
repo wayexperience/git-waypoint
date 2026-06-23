@@ -14,7 +14,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/src"
 OUT="$ROOT/build/upm-unified/it.wayexperience.unity.git-waypoint"
-VERSION="${VERSION:-0.1.1}"
+VERSION="${VERSION:-0.1.2}"
 
 API="$SRC/it.wayexperience.unity.git-waypoint.api"
 UI="$SRC/it.wayexperience.unity.git-waypoint.ui"

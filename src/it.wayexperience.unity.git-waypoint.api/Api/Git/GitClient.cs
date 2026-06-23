@@ -22,6 +22,11 @@ namespace Unity.VersionControl.Git
         ITask<string> Init();
 
         /// <summary>
+        /// Executes `git show HEAD:&lt;path&gt;` to read a file's content at HEAD. Path must use forward slashes.
+        /// </summary>
+        ITask<string> GetFileContentAtHead(string repoRelativePath);
+
+        /// <summary>
         /// Executes `git lfs install` to install LFS hooks.
         /// </summary>
         /// <returns>String output of git command</returns>
@@ -333,6 +338,13 @@ namespace Unity.VersionControl.Git
         public ITask<string> Init()
         {
             return new GitInitTask(platform, Token)
+                .Configure(platform.ProcessManager);
+        }
+
+        ///<inheritdoc/>
+        public ITask<string> GetFileContentAtHead(string repoRelativePath)
+        {
+            return new GitProcessTask(platform, "show HEAD:\"" + repoRelativePath + "\"", Token)
                 .Configure(platform.ProcessManager);
         }
 

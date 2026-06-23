@@ -1,8 +1,8 @@
 {
   "name": "it.wayexperience.unity.git-waypoint",
   "displayName": "Git Waypoint",
-  "description": "Git for Unity integrates source control into your work with friendly and accessible tools and workflows.",
-  "version": "0.1.1",
+  "description": "Git Waypoint integrates source control into Unity with friendly, artist-ready tools and Perforce-style LFS auto-locking.",
+  "version": "0.1.2",
   "license" : "MIT",
     "author": {
       "name": "WAY Experience", "email": "mt@16bit.it"

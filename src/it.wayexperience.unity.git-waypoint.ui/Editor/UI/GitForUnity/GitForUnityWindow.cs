@@ -1706,6 +1706,18 @@ namespace Unity.VersionControl.Git.UI
             var files = checkedPaths.ToList();
             if (files.Count == 0 || string.IsNullOrEmpty(commitMessage.value)) return;
 
+            // Don't let a commit land on top of files that have newer changes on the server.
+            if (ApplicationConfiguration.BlockOutdatedCommit)
+            {
+                var outdated = files.Where(IsOutdated).ToList();
+                if (outdated.Count > 0)
+                {
+                    SetStatus("Commit blocked: " + outdated.Count + " file(s) out of date — update from server first", Sev.Warn);
+                    Toast("Outdated files", "These have newer changes on the server. Pull first:\n" + string.Join("\n", outdated.Take(5)) + (outdated.Count > 5 ? "\n…" : ""), Sev.Warn);
+                    return;
+                }
+            }
+
             isBusy = true;
             BeginOp("Committing");
             UpdateCommitEnabled();
@@ -1899,8 +1911,8 @@ namespace Unity.VersionControl.Git.UI
             var rightFile = entry.Path.ToSPath();
             var tmpDir = Manager.Environment.UnityProjectPath.ToSPath().Combine("Temp", "ghu-diffs").EnsureDirectoryExists();
             var leftFile = tmpDir.Combine(rightFile.FileNameWithoutExtension + "_" + Repository.CurrentHead + rightFile.ExtensionWithDot);
-            return new GitProcessTask(Manager.Platform, "show HEAD:\"" + rightFile.ToString(SlashMode.Forward) + "\"")
-                .Configure(Manager.ProcessManager)
+            // Go through the git client (same process env/auth as every other op) rather than building a raw task here.
+            return Manager.GitClient.GetFileContentAtHead(rightFile.ToString(SlashMode.Forward))
                 .Catch(_ => true)
                 .Then((success, ex, txt) =>
                 {
@@ -1952,9 +1964,13 @@ namespace Unity.VersionControl.Git.UI
             RefreshChanges();
         }
 
+        // Blocking outdated commits is a core safety: never commit over files that are newer on the server.
+        bool HasOutdatedChecked() => ApplicationConfiguration.BlockOutdatedCommit && checkedPaths.Any(IsOutdated);
+
         void UpdateCommitEnabled()
         {
-            bool can = !isBusy && Repository != null && checkedPaths.Count > 0 && !string.IsNullOrEmpty(commitMessage?.value) && !IdentityMissing();
+            bool can = !isBusy && Repository != null && checkedPaths.Count > 0 && !string.IsNullOrEmpty(commitMessage?.value)
+                       && !IdentityMissing() && !HasOutdatedChecked();
             commitButton.SetEnabled(can);
             commitPushButton.SetEnabled(can && Repository != null && Repository.CurrentRemote.HasValue);
             commitButton.text = Repository != null && !string.IsNullOrEmpty(Repository.CurrentBranchName)

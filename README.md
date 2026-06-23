@@ -38,7 +38,7 @@ Even though this project is currently a fork, since neither GitHub nor Unity see
 
 This repository is LFS-enabled. To clone it, you should use a git client that supports git LFS 2.x.
 
-Check [How to Build](https://raw.githubusercontent.com/spoiledcat/git-for-unity/master/BUILD.md) for all the build, packaging and versioning details.
+Check [How to Build](https://github.com/wayexperience/git-waypoint/blob/main/BUILD.md) for all the build, packaging and versioning details.
 
 ### Release build 
 

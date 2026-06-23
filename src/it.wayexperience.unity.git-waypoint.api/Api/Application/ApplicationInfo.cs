@@ -25,7 +25,7 @@ namespace Unity.VersionControl.Git
 internal static partial class ThisAssembly {
         // Used when no build-stamped version is available (embedded source / unstamped package),
         // so the editor reports a real version instead of "0".
-        public const string FallbackVersion = "0.1.0";
+        public const string FallbackVersion = "0.1.2";
 
     public static string GetInformationalVersion()
     {
