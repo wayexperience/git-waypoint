@@ -155,26 +155,38 @@ namespace Unity.VersionControl.Git.UI
             return t;
         }
 
-        // Draws a status letter badge (M/A/D/R/C/?) into rect: a coloured rounded square with a centred
-        // white letter. Call only during a Repaint event.
-        public static void DrawLetterBadge(Rect rect, string letter, Color color)
+        // Draws a square status badge into rect: a coloured rounded square with either a centred white
+        // letter (M/A/D/R/C/↓) or a centred white glyph (e.g. a padlock). Keeps every overlay the same
+        // square shape. Call only during a Repaint event.
+        public static void DrawSquareBadge(Rect rect, Color color, string letter, Texture2D glyph)
         {
             var prev = GUI.color;
             GUI.color = color;
             GUI.DrawTexture(rect, RoundedMask(), ScaleMode.StretchToFill);
+
+            if (glyph != null)
+            {
+                float g = rect.height * 0.6f;
+                var gr = new Rect(rect.x + (rect.width - g) * 0.5f, rect.y + (rect.height - g) * 0.5f, g, g);
+                GUI.color = Color.white;
+                GUI.DrawTexture(gr, glyph, ScaleMode.ScaleToFit);
+            }
             GUI.color = prev;
 
-            if (letterStyle == null)
+            if (!string.IsNullOrEmpty(letter))
             {
-                letterStyle = new GUIStyle
+                if (letterStyle == null)
                 {
-                    alignment = TextAnchor.MiddleCenter,
-                    fontStyle = FontStyle.Bold,
-                };
-                letterStyle.normal.textColor = Color.white;
+                    letterStyle = new GUIStyle
+                    {
+                        alignment = TextAnchor.MiddleCenter,
+                        fontStyle = FontStyle.Bold,
+                    };
+                    letterStyle.normal.textColor = Color.white;
+                }
+                letterStyle.fontSize = Mathf.Max(8, Mathf.RoundToInt(rect.height * 0.6f));
+                GUI.Label(rect, letter, letterStyle);
             }
-            letterStyle.fontSize = Mathf.Max(8, Mathf.RoundToInt(rect.height * 0.6f));
-            GUI.Label(rect, letter, letterStyle);
         }
     }
 }

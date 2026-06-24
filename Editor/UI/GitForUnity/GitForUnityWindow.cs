@@ -54,6 +54,9 @@ namespace Unity.VersionControl.Git.UI
         readonly HashSet<string> checkedPaths = new HashSet<string>();
         readonly HashSet<string> knownPaths = new HashSet<string>();
         string searchText = "";
+        enum ChangesFilter { All, Modified, Added, Deleted, Outdated, Locked }
+        ChangesFilter changesFilter = ChangesFilter.All;
+        Button changesFilterButton;
 
         // Locks
         VisualElement lockStatsRow;
@@ -98,11 +101,18 @@ namespace Unity.VersionControl.Git.UI
         public static void Open()
         {
             var window = GetWindow<GitForUnityWindow>();
-            // Light logo on the dark editor theme, dark logo on the light theme, so the tab icon stays visible.
-            var logo = EditorGUIUtility.isProSkin ? "small-logo-light" : "small-logo";
-            window.titleContent = new GUIContent("Git Waypoint", Utility.GetIcon(logo, logo + "@2x"));
+            window.ApplyTitle();
             window.minSize = new Vector2(360, 420);
             window.Show();
+        }
+
+        // The tab icon's Texture2D is HideAndDontSave, so it's lost on every domain reload; re-apply it from
+        // CreateGUI (which runs after each reload) as well as on open, or the icon silently disappears.
+        void ApplyTitle()
+        {
+            // Light logo on the dark editor theme, dark logo on the light theme, so the tab icon stays visible.
+            var logo = EditorGUIUtility.isProSkin ? "small-logo-light" : "small-logo";
+            titleContent = new GUIContent("Git Waypoint", Utility.GetIcon(logo, logo + "@2x"));
         }
 
         IApplicationManager Manager => EntryPoint.ApplicationManager;
@@ -117,6 +127,7 @@ namespace Unity.VersionControl.Git.UI
             isBusy = false;
             opStartTime = EditorApplication.timeSinceStartup;
 
+            ApplyTitle();
             BuildUI();
             Subscribe();
             SubscribeUser();
@@ -479,6 +490,17 @@ namespace Unity.VersionControl.Git.UI
             Roomy(searchField, 24);
             searchField.RegisterValueChangedCallback(e => { searchText = e.newValue ?? ""; RefreshChanges(); });
             topRow.Add(searchField);
+
+            changesFilterButton = new Button(ShowChangesFilterMenu) { text = "All changes  ▾" };
+            changesFilterButton.style.height = 24;
+            changesFilterButton.style.marginLeft = 8; changesFilterButton.style.marginRight = 0; changesFilterButton.style.marginTop = 0; changesFilterButton.style.marginBottom = 0;
+            changesFilterButton.style.paddingLeft = 10; changesFilterButton.style.paddingRight = 10;
+            changesFilterButton.style.backgroundColor = GitForUnityTheme.Elevated;
+            changesFilterButton.style.color = GitForUnityTheme.Text;
+            changesFilterButton.style.borderTopWidth = changesFilterButton.style.borderBottomWidth = changesFilterButton.style.borderLeftWidth = changesFilterButton.style.borderRightWidth = 1;
+            changesFilterButton.style.borderTopColor = changesFilterButton.style.borderBottomColor = changesFilterButton.style.borderLeftColor = changesFilterButton.style.borderRightColor = GitForUnityTheme.Border;
+            GitForUnityTheme.Round(changesFilterButton, 6);
+            topRow.Add(changesFilterButton);
             tab.Add(topRow);
 
             changesSelRow = Row();
@@ -498,15 +520,26 @@ namespace Unity.VersionControl.Git.UI
             outdatedBanner.style.flexDirection = FlexDirection.Row;
             outdatedBanner.style.alignItems = Align.Center;
             outdatedBanner.style.display = DisplayStyle.None;
-            outdatedBanner.style.marginLeft = 10; outdatedBanner.style.marginRight = 10; outdatedBanner.style.marginBottom = 4;
-            outdatedBanner.style.paddingTop = 6; outdatedBanner.style.paddingBottom = 6;
-            outdatedBanner.style.paddingLeft = 8; outdatedBanner.style.paddingRight = 8;
-            outdatedBanner.style.backgroundColor = new Color(GitForUnityTheme.Outdated.r, GitForUnityTheme.Outdated.g, GitForUnityTheme.Outdated.b, 0.12f);
-            GitForUnityTheme.Round(outdatedBanner, 4);
-            outdatedBannerLabel = new Label("") { style = { flexGrow = 1, color = GitForUnityTheme.Outdated, fontSize = 11, whiteSpace = WhiteSpace.Normal } };
-            outdatedBanner.Add(outdatedBannerLabel);
+            outdatedBanner.style.marginLeft = 10; outdatedBanner.style.marginRight = 10; outdatedBanner.style.marginBottom = 6;
+            outdatedBanner.style.paddingTop = 8; outdatedBanner.style.paddingBottom = 8;
+            outdatedBanner.style.paddingLeft = 10; outdatedBanner.style.paddingRight = 10;
+            outdatedBanner.style.backgroundColor = new Color(GitForUnityTheme.Outdated.r, GitForUnityTheme.Outdated.g, GitForUnityTheme.Outdated.b, 0.10f);
+            GitForUnityTheme.Round(outdatedBanner, 6);
+            outdatedBanner.style.borderTopWidth = outdatedBanner.style.borderBottomWidth = outdatedBanner.style.borderLeftWidth = outdatedBanner.style.borderRightWidth = 1;
+            var bannerBorder = new Color(GitForUnityTheme.Outdated.r, GitForUnityTheme.Outdated.g, GitForUnityTheme.Outdated.b, 0.5f);
+            outdatedBanner.style.borderTopColor = outdatedBanner.style.borderBottomColor = outdatedBanner.style.borderLeftColor = outdatedBanner.style.borderRightColor = bannerBorder;
+
+            outdatedBanner.Add(new Label("⚠") { style = { color = GitForUnityTheme.Outdated, fontSize = 16, marginRight = 8, unityTextAlign = TextAnchor.MiddleCenter } });
+
+            var bannerCol = new VisualElement { style = { flexGrow = 1, flexDirection = FlexDirection.Column } };
+            outdatedBannerLabel = new Label("") { style = { color = GitForUnityTheme.Outdated, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.Normal } };
+            bannerCol.Add(outdatedBannerLabel);
+            bannerCol.Add(new Label("Pull to get the latest changes before pushing.") { style = { color = GitForUnityTheme.Subdued, fontSize = 11, whiteSpace = WhiteSpace.Normal } });
+            outdatedBanner.Add(bannerCol);
+
             var bannerPull = new Button(() => DoPull()) { text = "Pull" };
             StyleButton(bannerPull, false);
+            bannerPull.style.marginLeft = 8;
             outdatedBanner.Add(bannerPull);
             tab.Add(outdatedBanner);
 
@@ -555,6 +588,86 @@ namespace Unity.VersionControl.Git.UI
             return tab;
         }
 
+        static string FilterLabel(ChangesFilter f)
+        {
+            return f == ChangesFilter.All ? "All changes" : f.ToString();
+        }
+
+        void ShowChangesFilterMenu()
+        {
+            var menu = new GenericMenu();
+            foreach (ChangesFilter f in Enum.GetValues(typeof(ChangesFilter)))
+            {
+                var captured = f;
+                menu.AddItem(new GUIContent(FilterLabel(f)), changesFilter == f, () =>
+                {
+                    changesFilter = captured;
+                    changesFilterButton.text = FilterLabel(captured) + "  ▾";
+                    RefreshChanges();
+                });
+            }
+            menu.ShowAsContext();
+        }
+
+        bool MatchesFilter(GitStatusEntry entry, HashSet<SPath> lockedByMe, Dictionary<SPath, string> lockedByOther)
+        {
+            switch (changesFilter)
+            {
+                case ChangesFilter.Modified: return entry.Status == GitFileStatus.Modified || entry.Status == GitFileStatus.TypeChange;
+                case ChangesFilter.Added: return entry.Status == GitFileStatus.Added || entry.Status == GitFileStatus.Untracked;
+                case ChangesFilter.Deleted: return entry.Status == GitFileStatus.Deleted;
+                case ChangesFilter.Outdated: return IsOutdated(entry.Path);
+                case ChangesFilter.Locked: { var sp = entry.Path.ToSPath(); return lockedByMe.Contains(sp) || lockedByOther.ContainsKey(sp); }
+                default: return true;
+            }
+        }
+
+        // ---- LFS detection (for the "LFS" chip) ----------------------------------------------------
+        // Whether a file is stored in Git LFS, by matching its extension against the `*.ext lfs` /
+        // `*.ext filter=lfs` patterns in the repo's .gitattributes. Parsed once and cached until the file
+        // changes - cheap enough to call per row, and no per-file git invocation.
+        static HashSet<string> lfsExtensions;
+        static string lfsAttrsPath;
+        static System.DateTime lfsAttrsStamp;
+
+        void EnsureLfsExtensions()
+        {
+            var repo = Repository;
+            if (repo == null) { lfsExtensions = null; return; }
+            string p;
+            try { p = repo.LocalPath.Combine(".gitattributes").ToString(); }
+            catch { lfsExtensions = new HashSet<string>(); return; }
+
+            try
+            {
+                var info = new System.IO.FileInfo(p);
+                if (!info.Exists) { lfsExtensions = new HashSet<string>(); lfsAttrsPath = p; return; }
+                if (lfsExtensions != null && p == lfsAttrsPath && info.LastWriteTimeUtc == lfsAttrsStamp) return;
+
+                lfsAttrsPath = p; lfsAttrsStamp = info.LastWriteTimeUtc;
+                var set = new HashSet<string>();
+                foreach (var line in System.IO.File.ReadAllLines(p))
+                {
+                    var l = line.Trim();
+                    if (l.Length == 0 || l[0] == '#' || l[0] == '[') continue;
+                    var parts = l.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length < 2) continue;
+                    if (!parts.Skip(1).Any(t => t == "lfs" || t == "filter=lfs")) continue;
+                    if (parts[0].StartsWith("*."))
+                        set.Add(parts[0].Substring(2).ToLowerInvariant());
+                }
+                lfsExtensions = set;
+            }
+            catch { lfsExtensions = new HashSet<string>(); }
+        }
+
+        bool IsLfsTracked(string repoRelPath)
+        {
+            if (lfsExtensions == null || lfsExtensions.Count == 0) return false;
+            var ext = System.IO.Path.GetExtension(repoRelPath);
+            return !string.IsNullOrEmpty(ext) && lfsExtensions.Contains(ext.TrimStart('.').ToLowerInvariant());
+        }
+
         void RefreshChanges()
         {
             var repo = Repository;
@@ -586,8 +699,11 @@ namespace Unity.VersionControl.Git.UI
             checkedPaths.RemoveWhere(p => !present.Contains(p));
             knownPaths.RemoveWhere(p => !present.Contains(p));
 
+            EnsureLfsExtensions();
+
             var visible = changes
                 .Where(c => string.IsNullOrEmpty(searchText) || c.Path.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                .Where(c => MatchesFilter(c, lockedByMe, lockedByOther))
                 .OrderBy(c => c.Path, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -613,8 +729,8 @@ namespace Unity.VersionControl.Git.UI
             {
                 outdatedBanner.style.display = DisplayStyle.Flex;
                 outdatedBannerLabel.text = outdatedCount == 1
-                    ? "1 file is outdated. Pull the latest version before committing, or it'll be blocked."
-                    : outdatedCount + " files are outdated. Pull the latest version before committing.";
+                    ? "1 file is outdated"
+                    : outdatedCount + " files are outdated";
             }
             else outdatedBanner.style.display = DisplayStyle.None;
 
@@ -662,7 +778,7 @@ namespace Unity.VersionControl.Git.UI
             badge.style.marginLeft = 4; badge.style.marginRight = 6;
             row.Add(badge);
 
-            row.Add(NamePathBox(sp));
+            row.Add(NamePathBox(sp, IsLfsTracked(entry.Path)));
 
             string pending = ProjectWindowInterface.IsPendingUnlock(entry.Path) ? "Releasing…"
                            : ProjectWindowInterface.IsPendingLock(entry.Path) ? "Locking…" : null;
@@ -674,10 +790,24 @@ namespace Unity.VersionControl.Git.UI
             return row;
         }
 
-        VisualElement NamePathBox(SPath sp)
+        VisualElement NamePathBox(SPath sp, bool lfs)
         {
-            var box = new VisualElement { style = { flexGrow = 1, flexDirection = FlexDirection.Column, overflow = Overflow.Hidden } };
-            box.Add(new Label(sp.FileName) { style = { color = GitForUnityTheme.Text, fontSize = 12, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
+            // Fixed height (not min): rows with a path line are naturally taller than rows without, so a
+            // min-height alone still leaves them uneven. A fixed box height makes every row identical and
+            // the name centres vertically when there's no path (e.g. files in the repo root).
+            var box = new VisualElement { style = { flexGrow = 1, flexDirection = FlexDirection.Column, justifyContent = Justify.Center, overflow = Overflow.Hidden } };
+            box.style.height = CompactDensity ? 28 : 34;
+
+            var nameRow = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center } };
+            nameRow.Add(new Label(sp.FileName) { style = { color = GitForUnityTheme.Text, fontSize = 12, flexShrink = 1, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
+            if (lfs)
+            {
+                var lfsChip = GitForUnityTheme.Chip("LFS", GitForUnityTheme.Accent);
+                lfsChip.style.marginLeft = 6; lfsChip.style.flexShrink = 0;
+                nameRow.Add(lfsChip);
+            }
+            box.Add(nameRow);
+
             string dir = "";
             try { var parent = sp.Parent; if (parent.IsInitialized && !parent.IsEmpty) dir = parent.ToString(SlashMode.Forward) + "/"; } catch { }
             if (!string.IsNullOrEmpty(dir))
@@ -817,7 +947,7 @@ namespace Unity.VersionControl.Git.UI
             row.style.paddingLeft = 10; row.style.paddingRight = 10;
             Border(row, bottom: 1);
             row.Add(Avatar(ProjectWindowInterface.CurrentUsername, GitForUnityTheme.UpToDate));
-            var box = NamePathBox(sp); box.style.marginLeft = 6; row.Add(box);
+            var box = NamePathBox(sp, IsLfsTracked(sp.ToString())); box.style.marginLeft = 6; row.Add(box);
             row.Add(new Label(status) { style = { color = GitForUnityTheme.Accent, fontSize = 11, marginLeft = 6, flexShrink = 0 } });
             return row;
         }
@@ -834,7 +964,7 @@ namespace Unity.VersionControl.Git.UI
 
             row.Add(Avatar(lck.Owner.Name, mine ? GitForUnityTheme.UpToDate : GitForUnityTheme.Accent));
 
-            var box = NamePathBox(lck.Path);
+            var box = NamePathBox(lck.Path, IsLfsTracked(lck.Path.ToString()));
             box.style.marginLeft = 6;
             row.Add(box);
 
