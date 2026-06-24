@@ -106,6 +106,11 @@ namespace Unity.VersionControl.Git.UI
                 r.x += ApplicationConfiguration.HierarchyIconsOffsetLeft;
             }
 
+            // Keep it a square badge, vertically centred and a touch smaller than the row, to match the
+            // project window and avoid touching the next row.
+            float size = Mathf.Min(r.width, r.height) - 3f;
+            r = new Rect(r.x, r.y + (r.height - size) * 0.5f, size, size);
+
             ProjectWindowInterface.DrawBadge(r, badge);
         }
     }

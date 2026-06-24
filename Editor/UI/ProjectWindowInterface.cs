@@ -629,15 +629,16 @@ namespace Unity.VersionControl.Git.UI
             if (!badge.HasValue)
                 return;
 
-            // Badges are a nominal 20x20, same as the old icons, whether drawn as a glyph or a letter.
+            // Nominal badge size; clamped to the row below so it stays square and never crowds the row.
             const float badgeSize = 20f;
             Rect rect;
 
-            // End of row placement
+            // End of row placement: a small SQUARE badge, vertically centred, a touch smaller than the row
+            // so badges on adjacent rows keep a gap and don't touch.
             if (itemRect.width > itemRect.height)
             {
-                rect = new Rect(itemRect.xMax - badgeSize, itemRect.y, badgeSize,
-                    Mathf.Min(badgeSize, EditorGUIUtility.singleLineHeight));
+                float size = Mathf.Min(badgeSize, itemRect.height) - 3f;
+                rect = new Rect(itemRect.xMax - size - 2f, itemRect.y + (itemRect.height - size) * 0.5f, size, size);
             }
             // Corner placement
             // TODO: Magic numbers that need reviewing. Make sure this works properly with long filenames and wordwrap.
