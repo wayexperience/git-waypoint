@@ -15,12 +15,12 @@ namespace Unity.VersionControl.Git.UI
 {
     public static class HierarchyWindowInterface
     {
-        private static Dictionary<ItemId, Texture2D> iconCache;
+        private static Dictionary<ItemId, ProjectWindowInterface.StatusBadge> iconCache;
         private static float rightEdge;
 
         public static void Initialize()
         {
-            iconCache = new Dictionary<ItemId, Texture2D>();
+            iconCache = new Dictionary<ItemId, ProjectWindowInterface.StatusBadge>();
 #if UNITY_6000_5_OR_NEWER
             EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyItemTryToDrawStatusIcon;
 #else
@@ -33,7 +33,7 @@ namespace Unity.VersionControl.Git.UI
             if (!ApplicationConfiguration.HierarchyIconsEnabled)
                 return;
 
-            if (!iconCache.TryGetValue(instanceID, out Texture2D texture))
+            if (!iconCache.TryGetValue(instanceID, out ProjectWindowInterface.StatusBadge badge))
             {
                 string guid = null;
 #if UNITY_6000_5_OR_NEWER
@@ -61,7 +61,7 @@ namespace Unity.VersionControl.Git.UI
 
                     if (string.IsNullOrEmpty(scenePath))
                     {
-                        iconCache.Add(instanceID, null);
+                        iconCache.Add(instanceID, default);
                         return;
                     }
 
@@ -82,13 +82,13 @@ namespace Unity.VersionControl.Git.UI
 
                 if (guid != null)
                 {
-                    texture = ProjectWindowInterface.GetStatusIconForAssetGUID(guid);
+                    badge = ProjectWindowInterface.GetBadgeForAssetGUID(guid);
                 }
 
-                iconCache.Add(instanceID, texture);
+                iconCache.Add(instanceID, badge);
             }
 
-            if (texture == null)
+            if (!badge.HasValue)
                 return;
 
             // place the icon to the right of the list:
@@ -106,7 +106,7 @@ namespace Unity.VersionControl.Git.UI
                 r.x += ApplicationConfiguration.HierarchyIconsOffsetLeft;
             }
 
-            GUI.Label(r, texture);
+            ProjectWindowInterface.DrawBadge(r, badge);
         }
     }
 }
