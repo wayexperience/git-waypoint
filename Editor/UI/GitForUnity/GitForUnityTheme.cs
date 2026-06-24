@@ -113,5 +113,68 @@ namespace Unity.VersionControl.Git.UI
             l.style.color = Subdued;
             l.style.fontSize = 11;
         }
+
+        // ---- IMGUI letter badge (project/hierarchy overlays) ----
+        // The project and hierarchy overlays are IMGUI, not UI Toolkit, so they can't reuse BadgeSquare.
+        // These draw the same rounded coloured square + white letter live (same colours, no baked PNG),
+        // so a file's overlay matches its row in the Changes list.
+
+        static Texture2D roundedMask;
+        static GUIStyle letterStyle;
+
+        // A white rounded-square alpha mask, tinted per status at draw time. One texture for every colour.
+        static Texture2D RoundedMask()
+        {
+            if (roundedMask != null)
+                return roundedMask;
+
+            const int N = 32;
+            const float r = 7f;           // corner radius, matching BadgeSquare's 4px at its 18px size
+            const float half = N / 2f;
+            const float inner = half - r; // half-extent of the straight (non-rounded) region
+            var t = new Texture2D(N, N, TextureFormat.RGBA32, false)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Bilinear,
+            };
+            var px = new Color32[N * N];
+            for (int y = 0; y < N; y++)
+            for (int x = 0; x < N; x++)
+            {
+                // Signed distance to a rounded box, then 1px anti-aliasing across the edge.
+                float qx = Mathf.Abs(x + 0.5f - half) - inner;
+                float qy = Mathf.Abs(y + 0.5f - half) - inner;
+                float d = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) + Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f))
+                          + Mathf.Min(Mathf.Max(qx, qy), 0f) - r;
+                byte a = (byte)Mathf.RoundToInt(Mathf.Clamp01(0.5f - d) * 255f);
+                px[y * N + x] = new Color32(255, 255, 255, a);
+            }
+            t.SetPixels32(px);
+            t.Apply();
+            roundedMask = t;
+            return t;
+        }
+
+        // Draws a status letter badge (M/A/D/R/C/?) into rect: a coloured rounded square with a centred
+        // white letter. Call only during a Repaint event.
+        public static void DrawLetterBadge(Rect rect, string letter, Color color)
+        {
+            var prev = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, RoundedMask(), ScaleMode.StretchToFill);
+            GUI.color = prev;
+
+            if (letterStyle == null)
+            {
+                letterStyle = new GUIStyle
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontStyle = FontStyle.Bold,
+                };
+                letterStyle.normal.textColor = Color.white;
+            }
+            letterStyle.fontSize = Mathf.Max(8, Mathf.RoundToInt(rect.height * 0.6f));
+            GUI.Label(rect, letter, letterStyle);
+        }
     }
 }

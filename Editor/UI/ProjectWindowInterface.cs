@@ -314,10 +314,24 @@ namespace Unity.VersionControl.Git.UI
             }
         }
 
-        public static Texture2D GetStatusIconForAssetGUID(string guid)
+        // What to draw on a file: either a letter badge (diff status, matching the Changes list) or a
+        // glyph texture (lock / outdated, kept iconographic on the same palette). HasValue=false => nothing.
+        public struct StatusBadge
+        {
+            public bool HasValue;
+            public Texture2D Glyph; // when set, draw this texture
+            public string Letter;   // when set, draw a coloured letter badge
+            public Color Color;
+        }
+
+        // Single source of truth for a file's overlay badge, shared by the project and hierarchy windows.
+        // Priority mirrors the old GetStatusBadge: a merge conflict wins over "outdated", which wins over a
+        // lock, which wins over a plain working-tree change. Diff states render as M/A/D/R/C letters (same
+        // colours as GitForUnityTheme.DiffBadge); locks and outdated stay as glyphs.
+        public static StatusBadge GetBadgeForAssetGUID(string guid)
         {
             // A file can hold an LFS lock without any working-tree change (e.g. auto-locked on open).
-            // Don't bail when there's no status entry - fall through so a lock-only file still gets an icon.
+            // Don't bail when there's no status entry - fall through so a lock-only file still gets a badge.
             if (!guids.TryGetValue(guid, out int index))
                 index = -1;
 
@@ -326,29 +340,41 @@ namespace Unity.VersionControl.Git.UI
             bool optimisticallyUnlocked = optimisticUnlocks.Contains(guid);
 
             if (index < 0 && indexLock < 0 && !optimisticallyLocked && !IsOutdated(guid))
-            {
-                return null;
-            }
+                return default;
 
-            GitStatusEntry? gitStatusEntry = null;
             GitFileStatus status = GitFileStatus.None;
-
             if (index >= 0 && index < entries.Count)
-            {
-                gitStatusEntry = entries[index];
-                status = gitStatusEntry.Value.Status;
-            }
+                status = entries[index].Status;
 
             var isLocked = (indexLock >= 0 || optimisticallyLocked) && !optimisticallyUnlocked;
-            var texture = Styles.GetStatusBadge(status, isLocked, IsGuidLockedByMe(guid), IsOutdated(guid));
 
-            if (texture == null)
+            // Conflict and the lock/outdated glyphs keep their iconographic form; everything else is a letter.
+            if (status != GitFileStatus.Unmerged)
             {
-                var path = gitStatusEntry.HasValue ? gitStatusEntry.Value.Path : string.Empty;
-                Logger.Warning("Unable to retrieve texture for Guid:{0} EntryPath:{1} Status: {2} IsLocked:{3}", guid, path, status.ToString(), isLocked);
+                if (IsOutdated(guid))
+                    return Glyph(Utility.GetIcon("outdated"));
+                if (isLocked)
+                    return Glyph(Styles.GetLockBadge(status, IsGuidLockedByMe(guid)));
             }
 
-            return texture;
+            GitForUnityTheme.DiffBadge(status, out string letter, out Color color);
+            return new StatusBadge { HasValue = true, Letter = letter, Color = color };
+        }
+
+        private static StatusBadge Glyph(Texture2D texture)
+        {
+            return texture == null ? default : new StatusBadge { HasValue = true, Glyph = texture };
+        }
+
+        // Draws a resolved badge into rect during a Repaint event. Used by both overlay windows.
+        public static void DrawBadge(Rect rect, StatusBadge badge)
+        {
+            if (!badge.HasValue)
+                return;
+            if (badge.Glyph != null)
+                GUI.DrawTexture(rect, badge.Glyph, ScaleMode.ScaleToFit);
+            else if (!string.IsNullOrEmpty(badge.Letter))
+                GitForUnityTheme.DrawLetterBadge(rect, badge.Letter, badge.Color);
         }
 
         private static bool EnsureInitialized()
@@ -599,31 +625,32 @@ namespace Unity.VersionControl.Git.UI
             if (Event.current.type != EventType.Repaint || string.IsNullOrEmpty(guid))
                 return;
 
-            Texture2D texture = GetStatusIconForAssetGUID(guid);
-            if (texture == null)
+            StatusBadge badge = GetBadgeForAssetGUID(guid);
+            if (!badge.HasValue)
                 return;
 
+            // Badges are a nominal 20x20, same as the old icons, whether drawn as a glyph or a letter.
+            const float badgeSize = 20f;
             Rect rect;
 
             // End of row placement
             if (itemRect.width > itemRect.height)
             {
-                rect = new Rect(itemRect.xMax - texture.width, itemRect.y, texture.width,
-                    Mathf.Min(texture.height, EditorGUIUtility.singleLineHeight));
+                rect = new Rect(itemRect.xMax - badgeSize, itemRect.y, badgeSize,
+                    Mathf.Min(badgeSize, EditorGUIUtility.singleLineHeight));
             }
             // Corner placement
             // TODO: Magic numbers that need reviewing. Make sure this works properly with long filenames and wordwrap.
             else
             {
                 var scale = itemRect.height / 90f;
-                var size = new Vector2(texture.width * scale, texture.height * scale);
+                var size = new Vector2(badgeSize * scale, badgeSize * scale);
                 size = size / EditorGUIUtility.pixelsPerPoint;
                 var offset = new Vector2(itemRect.width * Mathf.Min(.4f * scale, .2f), itemRect.height * Mathf.Min(.2f * scale, .2f));
                 rect = new Rect(itemRect.center.x - size.x * .5f + offset.x, itemRect.center.y - size.y * .5f + offset.y, size.x, size.y);
             }
 
-            // Colour is baked into the icon now (green = mine, amber = someone else), so just draw it.
-            GUI.DrawTexture(rect, texture, ScaleMode.ScaleToFit);
+            DrawBadge(rect, badge);
 
             // Hovering the badge explains the state (outdated / who holds the lock), so artists can act
             // without opening a panel. The label has no visible content; it only carries the tooltip.
