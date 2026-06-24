@@ -314,20 +314,19 @@ namespace Unity.VersionControl.Git.UI
             }
         }
 
-        // What to draw on a file: either a letter badge (diff status, matching the Changes list) or a
-        // glyph texture (lock / outdated, kept iconographic on the same palette). HasValue=false => nothing.
+        // What to draw on a file: a coloured square badge carrying either a letter (diff status, matching
+        // the Changes list) or a white glyph (a padlock for locks). HasValue=false => nothing.
         public struct StatusBadge
         {
             public bool HasValue;
-            public Texture2D Glyph; // when set, draw this texture
-            public string Letter;   // when set, draw a coloured letter badge
             public Color Color;
+            public string Letter;   // a letter/symbol drawn white on the square (M/A/D/R/C/↓)
+            public Texture2D Glyph; // a white glyph drawn on the square instead of a letter (padlock)
         }
 
         // Single source of truth for a file's overlay badge, shared by the project and hierarchy windows.
-        // Priority mirrors the old GetStatusBadge: a merge conflict wins over "outdated", which wins over a
-        // lock, which wins over a plain working-tree change. Diff states render as M/A/D/R/C letters (same
-        // colours as GitForUnityTheme.DiffBadge); locks and outdated stay as glyphs.
+        // Every badge is the same coloured square as the Changes list. Priority: a merge conflict wins over
+        // "outdated", which wins over a lock, which wins over a plain working-tree change.
         public static StatusBadge GetBadgeForAssetGUID(string guid)
         {
             // A file can hold an LFS lock without any working-tree change (e.g. auto-locked on open).
@@ -348,22 +347,21 @@ namespace Unity.VersionControl.Git.UI
 
             var isLocked = (indexLock >= 0 || optimisticallyLocked) && !optimisticallyUnlocked;
 
-            // Conflict and the lock/outdated glyphs keep their iconographic form; everything else is a letter.
+            // Conflict (a "C" letter) wins; then outdated (amber, down-arrow); then a lock (padlock glyph,
+            // green when mine / red when someone else's); otherwise the plain diff letter.
             if (status != GitFileStatus.Unmerged)
             {
                 if (IsOutdated(guid))
-                    return Glyph(Utility.GetIcon("outdated"));
+                    return new StatusBadge { HasValue = true, Color = GitForUnityTheme.Outdated, Letter = "↓" };
                 if (isLocked)
-                    return Glyph(Styles.GetLockBadge(status, IsGuidLockedByMe(guid)));
+                {
+                    var col = IsGuidLockedByMe(guid) ? GitForUnityTheme.UpToDate : GitForUnityTheme.Conflict;
+                    return new StatusBadge { HasValue = true, Color = col, Glyph = Utility.GetIcon("lock-light") };
+                }
             }
 
             GitForUnityTheme.DiffBadge(status, out string letter, out Color color);
             return new StatusBadge { HasValue = true, Letter = letter, Color = color };
-        }
-
-        private static StatusBadge Glyph(Texture2D texture)
-        {
-            return texture == null ? default : new StatusBadge { HasValue = true, Glyph = texture };
         }
 
         // Draws a resolved badge into rect during a Repaint event. Used by both overlay windows.
@@ -371,10 +369,7 @@ namespace Unity.VersionControl.Git.UI
         {
             if (!badge.HasValue)
                 return;
-            if (badge.Glyph != null)
-                GUI.DrawTexture(rect, badge.Glyph, ScaleMode.ScaleToFit);
-            else if (!string.IsNullOrEmpty(badge.Letter))
-                GitForUnityTheme.DrawLetterBadge(rect, badge.Letter, badge.Color);
+            GitForUnityTheme.DrawSquareBadge(rect, badge.Color, badge.Letter, badge.Glyph);
         }
 
         private static bool EnsureInitialized()

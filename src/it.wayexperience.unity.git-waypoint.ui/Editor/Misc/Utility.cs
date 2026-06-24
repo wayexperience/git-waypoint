@@ -46,6 +46,17 @@ namespace Unity.VersionControl.Git
                 texture2D = stream.ToTexture2D();
             }
 
+            // Fallback: AssemblyResources resolves icons through ExtensionInstallPath, which goes stale after
+            // a UPM update (the package moves to a new …@<hash> folder) and isn't right for local file:
+            // packages either. AssetDatabase resolves the "Packages/…" path correctly regardless, so use it
+            // when the install-path lookup comes up empty.
+            if (texture2D == null)
+            {
+                var folder = IconsFolderAssetPath();
+                if (!string.IsNullOrEmpty(folder))
+                    texture2D = AssetDatabase.LoadAssetAtPath<Texture2D>(folder + "/" + filename);
+            }
+
             if (texture2D != null)
             {
                 texture2D.hideFlags = HideFlags.HideAndDontSave;
@@ -56,6 +67,34 @@ namespace Unity.VersionControl.Git
             }
 
             return texture2D;
+        }
+
+        private static string iconsFolderAssetPath;
+
+        // The "Packages/…/Editor/IconsAndLogos" asset path, found from this script's own location so it's
+        // correct whether the package is a UPM git package, a local file: package, or embedded. Cached.
+        private static string IconsFolderAssetPath()
+        {
+            if (iconsFolderAssetPath != null)
+                return iconsFolderAssetPath;
+
+            iconsFolderAssetPath = "";
+            try
+            {
+                var probe = CreateInstance<Utility>();
+                var script = MonoScript.FromScriptableObject(probe);
+                var path = AssetDatabase.GetAssetPath(script); // …/Editor/Misc/Utility.cs
+                DestroyImmediate(probe);
+                if (!string.IsNullOrEmpty(path))
+                {
+                    // Utility.cs lives in Editor/Misc; the icons are in Editor/IconsAndLogos.
+                    var editorDir = Path.GetDirectoryName(Path.GetDirectoryName(path));
+                    if (!string.IsNullOrEmpty(editorDir))
+                        iconsFolderAssetPath = editorDir.Replace('\\', '/') + "/IconsAndLogos";
+                }
+            }
+            catch { }
+            return iconsFolderAssetPath;
         }
 
         public static Texture2D GetTextureFromColor(Color color)
