@@ -9,7 +9,7 @@ namespace Unity.VersionControl.Git
 
     public class ApplicationEnvironment : UnityEnvironment, IGitEnvironment
     {
-        private const string logFile = "git-for-unity.log";
+        private const string logFile = "git-waypoint.log";
 
         public ApplicationEnvironment(string applicationName = null) : base(applicationName ?? ApplicationInfo.ApplicationName)
         {
