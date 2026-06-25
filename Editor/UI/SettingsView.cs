@@ -408,16 +408,7 @@ namespace Unity.VersionControl.Git.UI
 
                     GUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
                     EditorGUILayout.LabelField(AutoLockExtensionsLabel);
-                    EditorGUILayout.HelpBox(AutoLockExtensionsHelp, MessageType.None);
-                    Controls.DoControl(LfsLocksModificationProcessor.LockableExtensionsConfig,
-                        value => EditorGUILayout.TextArea(value, WrappedTextAreaStyle, GUILayout.MinHeight(48), GUILayout.ExpandWidth(true)),
-                        value => LfsLocksModificationProcessor.LockableExtensionsConfig = value);
-
-                    if (GUILayout.Button(AutoLockExtensionsResetLabel, GUILayout.ExpandWidth(false)))
-                    {
-                        LfsLocksModificationProcessor.LockableExtensionsConfig = string.Join(" ", LfsLocksModificationProcessor.DefaultLockableExtensions);
-                        GUIUtility.keyboardControl = 0;
-                    }
+                    EditorGUILayout.HelpBox("Lockable files are defined by the 'lockable' rules in your .gitattributes (committed, shared by the team). Edit .gitattributes to change them.", MessageType.None);
                 }
                 EditorGUI.EndDisabledGroup();
             });

@@ -43,52 +43,60 @@ namespace Unity.VersionControl.Git.UI
         public static int OnOpenMode { get { return EditorPrefs.GetInt(PrefOnOpen, 1); } set { EditorPrefs.SetInt(PrefOnOpen, value); } }
         public static bool ReleaseOnClose { get { return EditorPrefs.GetBool(PrefReleaseOnClose, true); } set { EditorPrefs.SetBool(PrefReleaseOnClose, value); } }
 
-        // Default set of binary/asset file types that aren't mergeable and so benefit from locking.
-        // Users can edit this list in the Settings tab; a file marked `lockable` in .gitattributes is
-        // always lockable regardless of this list (see AcquireLock / CheckAttrLockable).
-        public static readonly string[] DefaultLockableExtensions =
-        {
-            ".unity", ".prefab", ".asset", ".controller", ".anim", ".mat", ".playable", ".spriteatlas", ".mixer",
-            ".fbx", ".obj", ".blend", ".psd", ".png", ".tga", ".tif", ".tiff", ".exr", ".wav", ".mp3", ".ogg", ".aif", ".aiff",
-        };
-
-        // The raw, user-editable list (whitespace/comma separated). Setting it rebuilds the parsed set.
-        public static string LockableExtensionsConfig
-        {
-            get { return EditorPrefs.GetString(PrefLockableExtensions, string.Join(" ", DefaultLockableExtensions)); }
-            set { EditorPrefs.SetString(PrefLockableExtensions, value); lockableExtensions = null; }
-        }
-
+        // Which file types are lockable is read from the repo's `.gitattributes` (`*.ext lockable` rules) -
+        // the committed, team-shared policy - parsed once and cached until the file changes. There is no
+        // per-user list: everyone locks the same files. (CheckAttrLockable is the authoritative per-file
+        // confirmation; this fast set just avoids spawning git for obviously non-lockable saves.)
         private static HashSet<string> lockableExtensions;
-        private static string lockableExtensionsRaw;
+        private static System.DateTime lockableAttrsStamp;
+        private static string lockableAttrsPath;
 
+        // MAIN THREAD ONLY (reads Application.dataPath via RepoDir). Set of extensions marked `lockable`.
         private static HashSet<string> LockableExtensions
         {
             get
             {
-                var raw = LockableExtensionsConfig;
-                if (lockableExtensions == null || raw != lockableExtensionsRaw)
+                try
                 {
-                    lockableExtensionsRaw = raw;
-                    lockableExtensions = ParseExtensions(raw);
+                    var path = System.IO.Path.Combine(RepoDir(), ".gitattributes");
+                    var info = new System.IO.FileInfo(path);
+                    if (!info.Exists)
+                    {
+                        lockableAttrsPath = path;
+                        return lockableExtensions = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                    }
+                    if (lockableExtensions != null && path == lockableAttrsPath && info.LastWriteTimeUtc == lockableAttrsStamp)
+                        return lockableExtensions;
+                    lockableAttrsPath = path;
+                    lockableAttrsStamp = info.LastWriteTimeUtc;
+                    lockableExtensions = ParseLockableExtensions(path);
+                }
+                catch
+                {
+                    if (lockableExtensions == null)
+                        lockableExtensions = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
                 }
                 return lockableExtensions;
             }
         }
 
-        private static HashSet<string> ParseExtensions(string raw)
+        // Extract extensions from `*.ext lockable` lines in .gitattributes (ignores `-lockable` and non-glob patterns).
+        private static HashSet<string> ParseLockableExtensions(string gitattributesPath)
         {
             var set = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
-            if (string.IsNullOrEmpty(raw))
-                return set;
-            foreach (var token in raw.Split(new[] { ' ', ',', '\t', '\n', '\r', ';' }, System.StringSplitOptions.RemoveEmptyEntries))
+            foreach (var line in System.IO.File.ReadAllLines(gitattributesPath))
             {
-                var ext = token.Trim();
-                if (ext.Length == 0)
+                var l = line.Trim();
+                if (l.Length == 0 || l[0] == '#' || l[0] == '[')
                     continue;
-                if (ext[0] != '.')
-                    ext = "." + ext;
-                set.Add(ext);
+                var parts = l.Split(new[] { ' ', '\t' }, System.StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 2)
+                    continue;
+                bool lockable = false;
+                for (int i = 1; i < parts.Length; i++)
+                    if (parts[i] == "lockable") { lockable = true; break; }
+                if (lockable && parts[0].StartsWith("*."))
+                    set.Add("." + parts[0].Substring(2).ToLowerInvariant());
             }
             return set;
         }
@@ -210,15 +218,13 @@ namespace Unity.VersionControl.Git.UI
             ProjectWindowInterface.OptimisticLock(assetPath);
 
             string workingDir = RepoDir();
-            string extension = ext;
-            // Read the lockable-extension set here on the main thread: it comes from EditorPrefs, which
-            // throws when touched off the main thread. Capture it so the background task only does git.
-            var lockableExtensions = LockableExtensions;
             Task.Run(() =>
             {
                 string o, e;
                 bool tracked = RunGit("ls-files --error-unmatch -- \"" + assetPath + "\"", workingDir, out o, out e) == 0;
-                bool lockable = tracked && (lockableExtensions.Contains(extension) || CheckAttrLockable(assetPath, workingDir));
+                // Lockability is decided ONLY by the `lockable` rules in .gitattributes (committed, shared by
+                // the whole team) - not a per-user list - so everyone locks the same files.
+                bool lockable = tracked && CheckAttrLockable(assetPath, workingDir);
                 Enqueue(() =>
                 {
                     lock (gate) { inFlight.Remove(assetPath); }
