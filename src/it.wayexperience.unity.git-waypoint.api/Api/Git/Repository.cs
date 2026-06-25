@@ -40,6 +40,7 @@ namespace Unity.VersionControl.Git
         public event Action<CacheUpdateEvent> CurrentBranchAndRemoteChanged;
         public event Action<CacheUpdateEvent> LocalBranchListChanged;
         public event Action<CacheUpdateEvent> LocksChanged;
+        public event Action LocksRefreshed;
         public event Action<CacheUpdateEvent> RemoteBranchListChanged;
         public event Action<CacheUpdateEvent> LocalAndRemoteBranchListChanged;
         public event Action<IProgress> OnProgress
@@ -374,7 +375,14 @@ namespace Unity.VersionControl.Git
 
         private void RepositoryManagerOnGitLocksUpdated(List<GitLock> gitLocks)
         {
-            taskManager.RunInUI(() => cacheContainer.GitLocksCache.GitLocks = gitLocks);
+            // This fires on every successful locks fetch (changed or not); setting the cache only raises
+            // LocksChanged when the data differs, so signal LocksRefreshed here so the poller knows the poll
+            // completed even when nothing changed.
+            taskManager.RunInUI(() =>
+            {
+                cacheContainer.GitLocksCache.GitLocks = gitLocks;
+                LocksRefreshed?.Invoke();
+            });
         }
 
         private void RepositoryManagerOnRemoteBranchesUpdated(Dictionary<string, ConfigRemote> remoteConfigs,

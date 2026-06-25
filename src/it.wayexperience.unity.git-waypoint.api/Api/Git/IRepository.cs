@@ -79,6 +79,9 @@ namespace Unity.VersionControl.Git
         event Action<CacheUpdateEvent> CurrentBranchAndRemoteChanged;
         event Action<CacheUpdateEvent> LocalBranchListChanged;
         event Action<CacheUpdateEvent> LocksChanged;
+        // Fires after EVERY successful locks refresh, even when nothing changed (LocksChanged only fires on a
+        // change). The lock poller uses this to know a poll completed, instead of falsely flagging it "stuck".
+        event Action LocksRefreshed;
         event Action<CacheUpdateEvent> RemoteBranchListChanged;
         event Action<CacheUpdateEvent> LocalAndRemoteBranchListChanged;
         ITask RemoteAdd(string remote, string url);
