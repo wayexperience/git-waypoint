@@ -74,9 +74,14 @@ rsync -rc --delete "${RS_FILTER[@]}" \
 # The vendored task framework (process/task plumbing) ships in the package too - sync it with the same
 # filter so fixes to ProcessWrapper/ProcessTask/ProcessManager actually reach installed users. Without this
 # the framework in upm stays frozen at whatever was first published. --delete + --exclude='*' only prune
-# stale .cs/.meta; the asmdef/package.json/Documentation~ in the package are protected and left intact.
+# stale .cs/.meta; the asmdef/Documentation~ already in the package are protected and left intact.
 rsync -rc --delete "${RS_FILTER[@]}" \
   src/it.wayexperience.unity.git-waypoint.api/com.unity.editor.tasks/  "$WT/com.unity.editor.tasks/"
+# The framework folder is a standalone package in source (has its own package.json). Inside the unified
+# package it must NOT be a nested package - and the include='*.meta' rule above otherwise drags in
+# package.json.meta WITHOUT package.json (excluded), leaving an orphan .meta that makes Unity log
+# "asset can't be found" on every refresh. Strip both so the framework ships as plain source.
+rm -f "$WT/com.unity.editor.tasks/package.json" "$WT/com.unity.editor.tasks/package.json.meta"
 # Also ship the .gitattributes resource (what "Set up .gitattributes" writes) - it's not a .cs.
 cp src/it.wayexperience.unity.git-waypoint.api/Api/PlatformResources/gitattributes "$WT/Api/PlatformResources/gitattributes"
 cp "src/it.wayexperience.unity.git-waypoint.ui/Editor/PlatformResources~/gitattributes" "$WT/Editor/PlatformResources~/gitattributes"
