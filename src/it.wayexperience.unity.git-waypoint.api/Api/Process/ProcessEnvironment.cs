@@ -98,6 +98,15 @@ namespace Unity.VersionControl.Git
             if (!GitEnvironment.IsWindows && string.IsNullOrEmpty(GitEnvironment.GetEnvironmentVariable("GIT_SSH_COMMAND")))
                 psi.EnvironmentVariables["GIT_SSH_COMMAND"] = "ssh -o ConnectTimeout=15";
 
+            // ===== TEMP DIAGNOSTIC (remove): trace what git/ssh actually do inside Unity, to pin the lock
+            // hang. git's own trace -> git-trace.log; ssh -vvv (forced) -> ssh-trace.log. Both append. =====
+            if (!GitEnvironment.IsWindows)
+            {
+                psi.EnvironmentVariables["GIT_TRACE"] = "/tmp/waygit-git-trace.log";
+                psi.EnvironmentVariables["GIT_SSH_COMMAND"] = "ssh -vvv -o ConnectTimeout=15 -E /tmp/waygit-ssh-trace.log";
+            }
+            // ===== END TEMP DIAGNOSTIC =====
+
             // GUI-launched editors (Hub/Finder/Dock) don't inherit the user's login-shell environment, so
             // SSH_AUTH_SOCK is missing and git's ssh can't reach whatever agent the user runs (system
             // ssh-agent, a password manager, etc.) — SSH ops then fail without ever prompting. Import it

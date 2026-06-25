@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.1.18] - 2026-06-25
+- TEMP diagnostic build: verbose git/ssh tracing to pin the bundled-git lock-check hang
+
 ## [0.1.17] - 2026-06-25
 - Internal rename to Git Waypoint: GitForUnityWindow/Theme -> GitWaypointWindow/Theme, folder and solution renamed (no behavior change)
 
