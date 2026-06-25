@@ -71,6 +71,12 @@ rsync -rc --delete "${RS_FILTER[@]}" \
   src/it.wayexperience.unity.git-waypoint.ui/Editor/  "$WT/Editor/"
 rsync -rc --delete "${RS_FILTER[@]}" \
   src/it.wayexperience.unity.git-waypoint.api/Api/    "$WT/Api/"
+# The vendored task framework (process/task plumbing) ships in the package too - sync it with the same
+# filter so fixes to ProcessWrapper/ProcessTask/ProcessManager actually reach installed users. Without this
+# the framework in upm stays frozen at whatever was first published. --delete + --exclude='*' only prune
+# stale .cs/.meta; the asmdef/package.json/Documentation~ in the package are protected and left intact.
+rsync -rc --delete "${RS_FILTER[@]}" \
+  src/it.wayexperience.unity.git-waypoint.api/com.unity.editor.tasks/  "$WT/com.unity.editor.tasks/"
 # Also ship the .gitattributes resource (what "Set up .gitattributes" writes) - it's not a .cs.
 cp src/it.wayexperience.unity.git-waypoint.api/Api/PlatformResources/gitattributes "$WT/Api/PlatformResources/gitattributes"
 cp "src/it.wayexperience.unity.git-waypoint.ui/Editor/PlatformResources~/gitattributes" "$WT/Editor/PlatformResources~/gitattributes"
