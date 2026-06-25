@@ -473,8 +473,15 @@ namespace Unity.VersionControl.Git.UI
                 }
                 using (var p = System.Diagnostics.Process.Start(psi))
                 {
-                    string output = p.StandardOutput.ReadToEnd();
-                    p.WaitForExit(timeoutMs);
+                    // Drain BOTH streams and kill the child on timeout (see ReadGitConfig): this is a network
+                    // call (lfs locks --verify), exactly where a hung git/ssh would otherwise leak its
+                    // socket + pipes every poll.
+                    var outTask = p.StandardOutput.ReadToEndAsync();
+                    var errTask = p.StandardError.ReadToEndAsync();
+                    if (!p.WaitForExit(timeoutMs)) { try { p.Kill(); } catch { } }
+                    p.WaitForExit();
+                    string output = outTask.GetAwaiter().GetResult();
+                    errTask.GetAwaiter().GetResult();
                     return output;
                 }
             }
@@ -516,6 +523,11 @@ namespace Unity.VersionControl.Git.UI
             if (Repository == null)
                 return;
             string dir = RepoDir(); // capture on the main thread (no Unity APIs run off-thread below)
+            // Once the server has confirmed our name (cached), stop hitting the network: the identity doesn't
+            // change, so re-running `git lfs locks --verify` on every 10s poll would just be wasted (and once
+            // leaky) round-trips.
+            if (!string.IsNullOrEmpty(EditorPrefs.GetString(IdentityPrefKey(dir), null)))
+                return;
             System.Threading.Tasks.Task.Run(() =>
             {
                 var server = ReadOwnLockName(dir); // pure git; null if offline or no own locks
@@ -574,8 +586,15 @@ namespace Unity.VersionControl.Git.UI
                 }
                 using (var p = System.Diagnostics.Process.Start(psi))
                 {
-                    string output = p.StandardOutput.ReadToEnd();
-                    p.WaitForExit(5000);
+                    // Drain BOTH stdout and stderr (a redirected-but-unread stderr can fill its pipe buffer and
+                    // wedge the child) and KILL the child if it overruns the timeout - otherwise the `using`
+                    // disposes our wrapper while the git/ssh child lives on, leaking its pipe/socket FDs.
+                    var outTask = p.StandardOutput.ReadToEndAsync();
+                    var errTask = p.StandardError.ReadToEndAsync();
+                    if (!p.WaitForExit(5000)) { try { p.Kill(); } catch { } }
+                    p.WaitForExit();
+                    string output = outTask.GetAwaiter().GetResult();
+                    errTask.GetAwaiter().GetResult();
                     return string.IsNullOrEmpty(output) ? null : output.Trim();
                 }
             }
