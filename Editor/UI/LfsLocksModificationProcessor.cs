@@ -498,6 +498,7 @@ namespace Unity.VersionControl.Git.UI
                         }
                         stdout = outBuf.ToString();
                         stderr = "git timed out";
+                        try { p.Kill(); } catch { } // reap the hung child, else its pipe/socket FDs leak
                         return -1;
                     }
                     catch (System.Exception ex)

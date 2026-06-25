@@ -1,6 +1,28 @@
 # Changelog
 
-<!-- Do not change the line immediately below this comment, the build system will replace it with the actual version and date. -->
+All notable changes to Git Waypoint are listed here. Newest first.
+Managed by `release.sh` — do not hand-edit the version headers.
 
-## [VERSION] - DATE
+## [0.1.12] - 2026-06-25
+- Fix file-descriptor leak: drain stderr and kill timed-out git children; stop re-running 'lfs locks --verify' once identity is confirmed
 
+## [0.1.11] - 2026-06-25
+- Runtime version is now read from the installed package.json (`PackageInfo.FindForAssembly`), so the reported version always matches what's running.
+
+## [0.1.10] - 2026-06-25
+- Single, server-derived lock identity (`git lfs locks --verify`): the file badges and the edit-block now use the same "who am I", so they can't disagree. Zero config — it's learned from the server.
+- Added a read-only "Lock identity" field in Settings.
+
+## [0.1.9] - 2026-06-25
+- Lock identity is re-read live when locks change, instead of only at startup.
+
+## [0.1.8] - 2026-06-24
+- Project/Hierarchy overlays are now all square badges, including outdated (↓) and lock.
+- "Outdated" banner in the Changes tab, status filter dropdown, blue LFS chip next to the file name, even row spacing (also for files in the repo root).
+- Fixed the window tab icon disappearing after domain reloads.
+
+## [0.1.7] - 2026-06-24
+- Overlay badges are square, smaller and vertically centered.
+
+## [0.1.6] - 2026-06-24
+- Letter status badges (M/A/D/R) on the Project and Hierarchy file overlays, matching the Changes list.

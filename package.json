@@ -2,7 +2,7 @@
   "name": "it.wayexperience.unity.git-waypoint",
   "displayName": "Git Waypoint",
   "description": "Git Waypoint: Git for Unity with Perforce-style LFS auto-locking for artists and developers. Bundles the API, editor UI and native file watcher in a single package, and installs a portable Git + Git LFS automatically.",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "unity": "2020.3",
   "license": "MIT",
   "author": { "name": "WAY Experience", "email": "mt@16bit.it" },
