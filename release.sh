@@ -65,9 +65,11 @@ git worktree add -B upm "$WT" origin/upm -q
 # left behind. The .meta GUIDs already match the published package (verified), so syncing them is a no-op
 # for unchanged files and keeps references intact. Everything else (binaries, resources) is protected by
 # --exclude='*' and never deleted; the .gitattributes resource is copied explicitly below.
-rsync -rc --delete --include='*/' --include='*.cs' --include='*.meta' --exclude='*' \
+# (The .csproj/.DotSettings are source-build files, not package content - excluded before the .meta rule.)
+RS_FILTER=(--exclude='*.csproj' --exclude='*.csproj.meta' --exclude='*.csproj.DotSettings' --exclude='*.csproj.DotSettings.meta' --include='*/' --include='*.cs' --include='*.meta' --exclude='*')
+rsync -rc --delete "${RS_FILTER[@]}" \
   src/it.wayexperience.unity.git-waypoint.ui/Editor/  "$WT/Editor/"
-rsync -rc --delete --include='*/' --include='*.cs' --include='*.meta' --exclude='*' \
+rsync -rc --delete "${RS_FILTER[@]}" \
   src/it.wayexperience.unity.git-waypoint.api/Api/    "$WT/Api/"
 # Also ship the .gitattributes resource (what "Set up .gitattributes" writes) - it's not a .cs.
 cp src/it.wayexperience.unity.git-waypoint.api/Api/PlatformResources/gitattributes "$WT/Api/PlatformResources/gitattributes"
