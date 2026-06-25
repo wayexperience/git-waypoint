@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.1.21] - 2026-06-26
+- Fix file .meta orfano (package.json del framework) che generava errori 'asset can't be found' nel Package Manager
+
 ## [0.1.20] - 2026-06-26
 - Fix protezione .meta di file bloccati, identità lock per account/remote, badge Hierarchy sempre aggiornati, argomenti git senza quoting manuale, meno handle di processo trattenuti
 
