@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.1.19] - 2026-06-25
+- Fix fd leak: disable git-lfs SSH multiplexing (lfs.ssh.automultiplex=false) so the failed pure-SSH attempt against servers like Forgejo no longer leaks orphaned ssh ControlMaster processes; remove diagnostic tracing
+
 ## [0.1.18] - 2026-06-25
 - TEMP diagnostic build: verbose git/ssh tracing to pin the bundled-git lock-check hang
 

@@ -306,6 +306,7 @@ namespace Unity.VersionControl.Git.UI
 
             //Platform.Keychain.ConnectionsChanged += UpdateCurrentUsername;
             UpdateCurrentUsername();
+            EnsureLfsSshConfigOnce();
 
             if (IsInitialized)
             {
@@ -517,6 +518,34 @@ namespace Unity.VersionControl.Git.UI
         // current value untouched - so going offline never clobbers the known identity with a local guess.
         private static volatile string pendingUsername;
         private static volatile bool hasPendingUsername;
+
+        private static bool lfsSshConfigChecked;
+
+        // git-lfs first tries a pure-SSH transfer (`git-lfs-transfer`) that some servers (e.g. Forgejo)
+        // reject with "Unknown git command". git-lfs then falls back to HTTP (which works), but the failed
+        // attempt has already opened a multiplexed ssh ControlMaster that is never closed - so every
+        // locks/fetch poll leaks an orphaned ssh process and the editor eventually runs out of file
+        // descriptors. Disabling SSH connection multiplexing makes the fallback clean (no lingering master).
+        // Set once per repo (idempotent), off the main thread.
+        private static void EnsureLfsSshConfigOnce()
+        {
+            if (lfsSshConfigChecked)
+                return;
+            lfsSshConfigChecked = true;
+            string dir = RepoDir(); // main-thread capture (RepoDir touches Application.dataPath)
+            if (string.IsNullOrEmpty(dir))
+                return;
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var current = RunGit(dir, "config --get lfs.ssh.automultiplex", 5000);
+                    if (!string.Equals(current?.Trim(), "false", StringComparison.OrdinalIgnoreCase))
+                        RunGit(dir, "config lfs.ssh.automultiplex false", 5000);
+                }
+                catch { /* best-effort; a missing config just means the next poll may leak one master */ }
+            });
+        }
 
         private static void RefreshCurrentUsernameAsync()
         {
