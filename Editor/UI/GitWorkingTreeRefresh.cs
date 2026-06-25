@@ -53,8 +53,8 @@ namespace Unity.VersionControl.Git.UI
 
                 if (hooked != repository)
                 {
-                    if (hooked != null) hooked.LocksChanged -= OnLocksChanged;
-                    repository.LocksChanged += OnLocksChanged;
+                    if (hooked != null) hooked.LocksRefreshed -= OnLocksRefreshed;
+                    repository.LocksRefreshed += OnLocksRefreshed;
                     hooked = repository;
                 }
 
@@ -94,8 +94,9 @@ namespace Unity.VersionControl.Git.UI
             }
         }
 
-        // A result came back: the poll is healthy again, clear the pending/warning state.
-        private static void OnLocksChanged(CacheUpdateEvent _)
+        // A poll completed (fires on every refresh, even when the lock set didn't change): healthy again,
+        // clear the pending/warning state.
+        private static void OnLocksRefreshed()
         {
             pending = false;
             warned = false;

@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.1.14] - 2026-06-25
+- Lock poller no longer false-warns 'not responding' when locks are unchanged: a new LocksRefreshed event fires on every successful poll, not only on change
+
 ## [0.1.13] - 2026-06-25
 - History: keep ref pills (HEAD/branch) whole and ellipsize the commit summary when space is tight
 
