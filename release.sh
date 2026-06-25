@@ -60,12 +60,14 @@ echo ">> committed source"
 WT="$(mktemp -d)/upm"
 git fetch origin upm -q
 git worktree add -B upm "$WT" origin/upm -q
-# The unified package is flat: ui Editor/ -> Editor/, api Api/ -> Api/. Mirror only changed .cs files -
-# never .meta (their GUIDs may differ from the published package and overwriting them would break
-# references for users who already installed) nor binaries.
-rsync -rc --include='*/' --include='*.cs' --exclude='*' \
+# The unified package is flat: ui Editor/ -> Editor/, api Api/ -> Api/. Mirror .cs AND .meta with --delete
+# so upm is an EXACT mirror of the source - renames and deletions are handled, no stale/duplicate files
+# left behind. The .meta GUIDs already match the published package (verified), so syncing them is a no-op
+# for unchanged files and keeps references intact. Everything else (binaries, resources) is protected by
+# --exclude='*' and never deleted; the .gitattributes resource is copied explicitly below.
+rsync -rc --delete --include='*/' --include='*.cs' --include='*.meta' --exclude='*' \
   src/it.wayexperience.unity.git-waypoint.ui/Editor/  "$WT/Editor/"
-rsync -rc --include='*/' --include='*.cs' --exclude='*' \
+rsync -rc --delete --include='*/' --include='*.cs' --include='*.meta' --exclude='*' \
   src/it.wayexperience.unity.git-waypoint.api/Api/    "$WT/Api/"
 # Also ship the .gitattributes resource (what "Set up .gitattributes" writes) - it's not a .cs.
 cp src/it.wayexperience.unity.git-waypoint.api/Api/PlatformResources/gitattributes "$WT/Api/PlatformResources/gitattributes"

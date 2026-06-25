@@ -70,6 +70,15 @@ Set the major and/or minor number in it and **commit the change** so that the ne
 The patch part of the version is the height of the commit tree since the last manual change of the `version.json`
 file, so once you commit a change to the major or minor parts, the patch will reset back to 0.
 
+## Acknowledgements
+
+Git Waypoint stands on the shoulders of two excellent open-source projects, and would not exist without them:
+
+- **[Git for Unity](https://github.com/spoiledcat/git-for-unity)** by **Andreia Gaita** — the direct upstream this is forked from.
+- **[GitHub for Unity](https://github.com/github-for-unity/Unity)** by **GitHub** — the original project both descend from.
+
+Huge thanks to their authors and contributors. Git Waypoint inherits and builds on their work.
+
 ## License
 
 **[MIT](LICENSE)**
