@@ -22,7 +22,10 @@ namespace Unity.VersionControl.Git.UI
 
         private static Dictionary<SPath, GitLock> locks = new Dictionary<SPath, GitLock>();
         private static CacheUpdateEvent lastLocksChangedEvent;
-        private static string loggedInUser;
+        // Single source of truth for our lock identity: ProjectWindowInterface resolves it (server-derived
+        // via `git lfs locks --verify`, then config fallback) and refreshes it live, so the edit block here
+        // and the badge colours there can never disagree.
+        private static string loggedInUser => ProjectWindowInterface.CurrentUsername;
 
         // ---- Perforce-style auto-lock (acquire/release locks automatically) ----
         // Acquisition goes through repository.RequestLock/ReleaseLock so the lock cache - and the UI -
@@ -106,7 +109,6 @@ namespace Unity.VersionControl.Git.UI
             platform = plat;
 
             repository = environment.Repository;
-            loggedInUser = ResolveCurrentUser();
             UnityShim.Editor_finishedDefaultHeaderGUI += InspectorHeaderFinished;
 
             if (!hooked)
