@@ -1499,20 +1499,9 @@ namespace Unity.VersionControl.Git.UI
             lk.Add(SettingsRow("Lock on open", "What to do when you open a lockable file.", onOpen));
             lk.Add(SettingsRow("Release my locks on editor close", "Unlock your files automatically when you quit Unity.",
                 PlainToggle(LfsLocksModificationProcessor.ReleaseOnClose, v => LfsLocksModificationProcessor.ReleaseOnClose = v)));
-            lk.Add(new Label("File types to lock") { style = { color = GitForUnityTheme.Text, fontSize = 12, marginTop = 8 } });
-            lk.Add(new Label("Extensions locked automatically (space-separated). Files marked lockable in .gitattributes are always included.")
-                { style = { color = GitForUnityTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 4 } });
-            var ext = new TextField { multiline = true, value = LfsLocksModificationProcessor.LockableExtensionsConfig };
-            ext.style.whiteSpace = WhiteSpace.Normal; ext.style.marginBottom = 6; Roomy(ext, 44);
-            ext.RegisterValueChangedCallback(e => LfsLocksModificationProcessor.LockableExtensionsConfig = e.newValue);
-            lk.Add(ext);
-            var reset = new Button(() =>
-            {
-                LfsLocksModificationProcessor.LockableExtensionsConfig = string.Join(" ", LfsLocksModificationProcessor.DefaultLockableExtensions);
-                ext.value = LfsLocksModificationProcessor.LockableExtensionsConfig;
-            }) { text = "Reset to defaults" };
-            StyleButton(reset, false); reset.style.marginBottom = 8; reset.style.alignSelf = Align.FlexStart;
-            lk.Add(reset);
+            lk.Add(new Label("Lockable files") { style = { color = GitForUnityTheme.Text, fontSize = 12, marginTop = 8 } });
+            lk.Add(new Label("Which files are lockable is set by the `lockable` rules in your repository's .gitattributes - committed, so the whole team shares one policy. Edit .gitattributes to change it, or use \"Set up .gitattributes\" in the Repository section to install the recommended set.")
+                { style = { color = GitForUnityTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 8 } });
 
             // Project window
             var pw = SettingsCard("Project window", root);

@@ -1,86 +1,195 @@
-* text=auto
+# -------------------------------------------------------------------------
+# UNITY GITATTRIBUTES
+# -------------------------------------------------------------------------
 
-# Unity files
-*.meta -text merge=unityyamlmerge diff
-*.unity -text merge=unityyamlmerge diff
-*.asset -text merge=unityyamlmerge diff
-*.prefab -text merge=unityyamlmerge diff
-*.mat -text merge=unityyamlmerge diff
-*.anim -text merge=unityyamlmerge diff
-*.controller -text merge=unityyamlmerge diff
-*.overrideController -text merge=unityyamlmerge diff
-*.physicMaterial -text merge=unityyamlmerge diff
-*.physicsMaterial2D -text merge=unityyamlmerge diff
-*.playable -text merge=unityyamlmerge diff
-*.mask -text merge=unityyamlmerge diff
-*.brush -text merge=unityyamlmerge diff
-*.flare -text merge=unityyamlmerge diff
-*.fontsettings -text merge=unityyamlmerge diff
-*.guiskin -text merge=unityyamlmerge diff
-*.giparams -text merge=unityyamlmerge diff
-*.renderTexture -text merge=unityyamlmerge diff
-*.spriteatlas -text merge=unityyamlmerge diff
-*.terrainlayer -text merge=unityyamlmerge diff
-*.mixer -text merge=unityyamlmerge diff
-*.shadervariants -text merge=unityyamlmerge diff
+# Define macros (makes the file cleaner)
+[attr]lfs               filter=lfs diff=lfs merge=lfs -text
+[attr]unity-json        eol=lf linguist-language=json
+[attr]unity-yaml        merge=unityyamlmerge eol=lf linguist-language=yaml
 
-# Image formats
-*.psd filter=lfs diff=lfs merge=lfs -text
-*.jpg filter=lfs diff=lfs merge=lfs -text
-*.png filter=lfs diff=lfs merge=lfs -text
-*.gif filter=lfs diff=lfs merge=lfs -text
-*.bmp filter=lfs diff=lfs merge=lfs -text
-*.tga filter=lfs diff=lfs merge=lfs -text
-*.tiff filter=lfs diff=lfs merge=lfs -text
-*.tif filter=lfs diff=lfs merge=lfs -text
-*.iff filter=lfs diff=lfs merge=lfs -text
-*.pict filter=lfs diff=lfs merge=lfs -text
-*.dds filter=lfs diff=lfs merge=lfs -text
-*.xcf filter=lfs diff=lfs merge=lfs -text
+# Unity source files (Text)
+*.cs                    text diff=csharp
+*.cginc                 text
+*.compute               text linguist-language=hlsl
+*.hlsl                  text linguist-language=hlsl
+*.raytrace              text linguist-language=hlsl
+*.shader                text
 
-# Audio formats
-*.mp3 filter=lfs diff=lfs merge=lfs -text
-*.ogg filter=lfs diff=lfs merge=lfs -text
-*.wav filter=lfs diff=lfs merge=lfs -text
-*.aiff filter=lfs diff=lfs merge=lfs -text
-*.aif filter=lfs diff=lfs merge=lfs -text
-*.mod filter=lfs diff=lfs merge=lfs -text
-*.it filter=lfs diff=lfs merge=lfs -text
-*.s3m filter=lfs diff=lfs merge=lfs -text
-*.xm filter=lfs diff=lfs merge=lfs -text
+# Unity JSON files (Force LF line endings, syntax highlighting)
+*.asmdef                unity-json
+*.asmref                unity-json
+*.index                 unity-json
+*.inputactions          unity-json
+*.shadergraph           unity-json
+*.shadersubgraph        unity-json
+packages-lock.json      unity-json linguist-generated
 
-# Video formats
-*.mov filter=lfs diff=lfs merge=lfs -text
-*.avi filter=lfs diff=lfs merge=lfs -text
-*.asf filter=lfs diff=lfs merge=lfs -text
-*.mpg filter=lfs diff=lfs merge=lfs -text
-*.mpeg filter=lfs diff=lfs merge=lfs -text
-*.mp4 filter=lfs diff=lfs merge=lfs -text
+# Unity UI Toolkit files
+*.tss                   text diff=css linguist-language=css
+*.uss                   text diff=css linguist-language=css
+*.uxml                  text linguist-language=xml linguist-detectable
 
-# 3D formats
-*.fbx filter=lfs diff=lfs merge=lfs -text
-*.obj filter=lfs diff=lfs merge=lfs -text
-*.max filter=lfs diff=lfs merge=lfs -text
-*.blend filter=lfs diff=lfs merge=lfs -text
-*.dae filter=lfs diff=lfs merge=lfs -text
-*.mb filter=lfs diff=lfs merge=lfs -text
-*.ma filter=lfs diff=lfs merge=lfs -text
-*.3ds filter=lfs diff=lfs merge=lfs -text
-*.dfx filter=lfs diff=lfs merge=lfs -text
-*.c4d filter=lfs diff=lfs merge=lfs -text
-*.lwo filter=lfs diff=lfs merge=lfs -text
-*.lwo2 filter=lfs diff=lfs merge=lfs -text
-*.abc filter=lfs diff=lfs merge=lfs -text
-*.3dm filter=lfs diff=lfs merge=lfs -text
+# Unity YAML files (Smart Merge enabled)
+*.anim                  unity-yaml
+*.asset                 unity-yaml
+*.brush                 unity-yaml
+*.controller            unity-yaml
+*.flare                 unity-yaml
+*.fontsettings          unity-yaml
+*.giparams              unity-yaml
+*.guiskin               unity-yaml
+*.lighting              unity-yaml
+*.mask                  unity-yaml
+*.mat                   unity-yaml
+*.meta                  unity-yaml
+*.mixer                 unity-yaml
+*.overrideController    unity-yaml
+*.physicMaterial        unity-yaml
+*.physicsMaterial2D     unity-yaml
+*.playable              unity-yaml
+*.prefab                unity-yaml
+*.preset                unity-yaml
+*.renderTexture         unity-yaml
+*.scenetemplate         unity-yaml
+*.shadervariants        unity-yaml
+*.signal                unity-yaml
+*.spriteatlas           unity-yaml
+*.spriteatlasv2         unity-yaml
+*.terrainlayer          unity-yaml
+*.unity                 unity-yaml
 
-# Build
-*.dll filter=lfs diff=lfs merge=lfs -text
-*.pdb filter=lfs diff=lfs merge=lfs -text
-*.mdb filter=lfs diff=lfs merge=lfs -text
+# Exclude third-party plugins from GitHub language stats
+Assets/Plugins/** linguist-generated
 
-# Packaging
-*.zip filter=lfs diff=lfs merge=lfs -text
-*.7z filter=lfs diff=lfs merge=lfs -text
-*.gz filter=lfs diff=lfs merge=lfs -text
-*.rar filter=lfs diff=lfs merge=lfs -text
-*.tar filter=lfs diff=lfs merge=lfs -text
+# -------------------------------------------------------------------------
+# LFS (LARGE FILE STORAGE)
+# -------------------------------------------------------------------------
+
+# Unity Specific Binary
+*.cubemap               lfs
+*.unitypackage          lfs
+LightingData.asset      binary
+
+# 3D Models
+*.3dm                   lfs
+*.3ds                   lfs
+*.3DS                   lfs
+*.abc                   lfs
+*.blend                 lfs
+*.blend1                lfs
+*.c4d                   lfs
+*.collada               lfs
+*.dae                   lfs
+*.dxf                   lfs
+*.fbx                   lfs
+*.FBX                   lfs
+*.jas                   lfs
+*.lws                   lfs
+*.lxo                   lfs
+*.ma                    lfs
+*.max                   lfs
+*.mb                    lfs
+*.obj                   lfs
+*.ply                   lfs
+*.skp                   lfs
+*.stl                   lfs
+*.ztl                   lfs
+
+# Audio
+*.aif                   lfs
+*.aiff                  lfs
+*.it                    lfs
+*.mod                   lfs
+*.mp3                   lfs
+*.ogg                   lfs
+*.s3m                   lfs
+*.wav                   lfs
+*.xm                    lfs
+
+# Video
+*.asf                   lfs
+*.avi                   lfs
+*.flv                   lfs
+*.mov                   lfs
+*.mp4                   lfs
+*.mpeg                  lfs
+*.mpg                   lfs
+*.ogv                   lfs
+*.wmv                   lfs
+
+# Images & Textures
+*.bmp                   lfs
+*.exr                   lfs
+*.gif                   lfs
+*.hdr                   lfs
+*.iff                   lfs
+*.jpeg                  lfs
+*.jpg                   lfs
+*.pict                  lfs
+*.png                   lfs
+*.psd                   lfs
+*.tga                   lfs
+*.tif                   lfs
+*.tiff                  lfs
+*.webp                  lfs
+
+# Design Source Files
+*.ai                    lfs
+*.afdesign              lfs
+*.afphoto               lfs
+*.psb                   lfs
+*.sketch                lfs
+
+# Compressed Archives
+*.7z                    lfs
+*.bz2                   lfs
+*.gz                    lfs
+*.rar                   lfs
+*.tar                   lfs
+*.zip                   lfs
+
+# Executables & Libs
+*.apk                   lfs
+*.dll                   lfs
+*.exe                   lfs
+*.pdb                   lfs
+*.so                    lfs
+*.a                     lfs
+
+# Documents
+*.pdf                   lfs
+*.doc                   lfs
+*.docx                  lfs
+
+# -------------------------------------------------------------------------
+# FILE LOCKING (Git LFS) — un-mergeable assets get an exclusive checkout.
+# These are 'lockable': Git Waypoint auto-locks them, and they are the team's
+# locking policy committed in the repo (single source of truth for everyone).
+# -------------------------------------------------------------------------
+
+# Scenes & serialized assets
+*.unity                 lockable
+*.prefab                lockable
+*.asset                 lockable
+*.controller            lockable
+*.anim                  lockable
+*.mat                   lockable
+*.playable              lockable
+*.spriteatlas           lockable
+*.mixer                 lockable
+
+# Heavy binaries (art / audio / models)
+*.fbx                   lockable
+*.obj                   lockable
+*.blend                 lockable
+*.psd                   lockable
+*.png                   lockable
+*.tga                   lockable
+*.tif                   lockable
+*.tiff                  lockable
+*.exr                   lockable
+*.wav                   lockable
+*.mp3                   lockable
+*.ogg                   lockable
+*.aif                   lockable
+*.aiff                  lockable
