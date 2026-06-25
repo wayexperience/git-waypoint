@@ -1129,11 +1129,13 @@ namespace Unity.VersionControl.Git.UI
             // summary + badges
             var titleRow = Row();
             titleRow.style.alignItems = Align.Center;
-            titleRow.Add(new Label(entry.summary) { style = { flexGrow = 1, color = GitForUnityTheme.Text, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
+            // minWidth:0 lets the summary shrink below its content width so it ellipsizes instead of pushing
+            // the ref pills off the row; the pills get flexShrink:0 so they always stay whole.
+            titleRow.Add(new Label(entry.summary) { style = { flexGrow = 1, flexShrink = 1, minWidth = 0, color = GitForUnityTheme.Text, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
             if (isHead)
             {
-                var head = GitForUnityTheme.Chip("HEAD", GitForUnityTheme.Accent); head.style.marginLeft = 4; titleRow.Add(head);
-                if (!string.IsNullOrEmpty(branchName)) { var bch = GitForUnityTheme.Chip(branchName, GitForUnityTheme.UpToDate); bch.style.marginLeft = 4; titleRow.Add(bch); }
+                var head = GitForUnityTheme.Chip("HEAD", GitForUnityTheme.Accent); head.style.marginLeft = 4; head.style.flexShrink = 0; titleRow.Add(head);
+                if (!string.IsNullOrEmpty(branchName)) { var bch = GitForUnityTheme.Chip(branchName, GitForUnityTheme.UpToDate); bch.style.marginLeft = 4; bch.style.flexShrink = 0; titleRow.Add(bch); }
             }
             col.Add(titleRow);
             // meta: avatar + author · time · hash
