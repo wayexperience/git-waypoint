@@ -421,6 +421,10 @@ namespace Unity.VersionControl.Git.UI
             if (!lastCurrentRemoteChangedEvent.Equals(cacheUpdateEvent))
             {
                 lastCurrentRemoteChangedEvent = cacheUpdateEvent;
+                // The remote (and possibly the LFS account) changed: re-resolve "who am I" for the new remote -
+                // its cache key differs - so own-lock badges and IsOpenForEdit stop using the old identity.
+                UpdateCurrentUsername();
+                UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
         }
 
@@ -430,9 +434,30 @@ namespace Unity.VersionControl.Git.UI
         // server addresses us, so the later owner-name comparison is exact (no display-name guessing).
         // The init value comes from cache/config instantly; the server confirmation lands asynchronously.
 
-        private static string IdentityPrefKey(string repoDir)
+        // Keyed on repo dir AND remote URL: switching LFS account/remote in the same working tree must
+        // re-resolve "who am I" rather than keep serving the previous remote's identity.
+        private static string IdentityPrefKey(string repoDir, string remote)
         {
-            return "waygit.lockIdentity:" + (repoDir ?? "");
+            return "waygit.lockIdentity:" + (repoDir ?? "") + "|" + (remote ?? "");
+        }
+
+        // The current remote's URL, part of the identity cache key. MAIN THREAD ONLY (reads the repo cache).
+        private static string CurrentRemoteUrl()
+        {
+            var r = Repository;
+            return r != null && r.CurrentRemote.HasValue ? (r.CurrentRemote.Value.Url ?? "") : "";
+        }
+
+        // Explicit "re-detect identity": forget the cached server-confirmed name for the current repo+remote
+        // and resolve again (local config now, server next). Use after changing LFS credentials/account when
+        // the remote URL itself didn't change, so the cached name can no longer be trusted.
+        public static void ResetIdentity()
+        {
+            if (Repository == null)
+                return;
+            EditorPrefs.DeleteKey(IdentityPrefKey(RepoDir(), CurrentRemoteUrl()));
+            UpdateCurrentUsername();
+            UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
         }
 
         // Returns the owner name the server reports on one of OUR locks, or null. A server round-trip, so
@@ -497,14 +522,14 @@ namespace Unity.VersionControl.Git.UI
         private static void UpdateCurrentUsername()
         {
             if (Repository == null) { currentUsername = String.Empty; return; }
-            currentUsername = ResolveLockUserLocal(RepoDir());
+            currentUsername = ResolveLockUserLocal(RepoDir(), CurrentRemoteUrl());
             RefreshCurrentUsernameAsync();
         }
 
-        // Instant, no server round-trip: last server-confirmed name, else local git config.
-        private static string ResolveLockUserLocal(string repoDir)
+        // Instant, no server round-trip: last server-confirmed name (for this repo+remote), else local config.
+        private static string ResolveLockUserLocal(string repoDir, string remote)
         {
-            var cached = EditorPrefs.GetString(IdentityPrefKey(repoDir), null);
+            var cached = EditorPrefs.GetString(IdentityPrefKey(repoDir, remote), null);
             if (!string.IsNullOrEmpty(cached))
                 return cached;
             var username = ReadGitConfig(repoDir, "lfs.lockUser");
@@ -516,8 +541,15 @@ namespace Unity.VersionControl.Git.UI
         // Confirm the identity with the server off the main thread. We only UPDATE when the server gives an
         // answer (a lock it says is ours); when it can't (offline, or you hold no locks yet) we leave the
         // current value untouched - so going offline never clobbers the known identity with a local guess.
-        private static volatile string pendingUsername;
-        private static volatile bool hasPendingUsername;
+        // Published as ONE immutable record (atomic reference write) carrying the repo+remote it was resolved
+        // against, so the main thread can tell whether the context still matches before adopting it.
+        private sealed class PendingIdentity
+        {
+            public string RepoDir;
+            public string Remote;
+            public string Username;
+        }
+        private static volatile PendingIdentity pendingIdentity;
 
         private static bool lfsSshConfigChecked;
 
@@ -551,20 +583,18 @@ namespace Unity.VersionControl.Git.UI
         {
             if (Repository == null)
                 return;
-            string dir = RepoDir(); // capture on the main thread (no Unity APIs run off-thread below)
-            // Once the server has confirmed our name (cached), stop hitting the network: the identity doesn't
-            // change, so re-running `git lfs locks --verify` on every 10s poll would just be wasted (and once
-            // leaky) round-trips.
-            if (!string.IsNullOrEmpty(EditorPrefs.GetString(IdentityPrefKey(dir), null)))
+            string dir = RepoDir();          // capture on the main thread (no Unity APIs run off-thread below)
+            string remote = CurrentRemoteUrl();
+            // Once the server has confirmed our name for THIS repo+remote (cached), stop hitting the network:
+            // the identity doesn't change, so re-running `git lfs locks --verify` on every 10s poll would just
+            // be wasted round-trips. (A remote/account switch uses a different key, so it re-resolves.)
+            if (!string.IsNullOrEmpty(EditorPrefs.GetString(IdentityPrefKey(dir, remote), null)))
                 return;
             System.Threading.Tasks.Task.Run(() =>
             {
                 var server = ReadOwnLockName(dir); // pure git; null if offline or no own locks
                 if (!string.IsNullOrEmpty(server))
-                {
-                    pendingUsername = server;
-                    hasPendingUsername = true; // set value before flag so the reader sees a consistent pair
-                }
+                    pendingIdentity = new PendingIdentity { RepoDir = dir, Remote = remote, Username = server };
             });
         }
 
@@ -572,16 +602,23 @@ namespace Unity.VersionControl.Git.UI
         // it for offline use. EditorPrefs/RepaintAllViews are main-thread-only, hence done here.
         private static void ApplyPendingUsername()
         {
-            if (!hasPendingUsername)
+            var pending = pendingIdentity;
+            if (pending == null)
                 return;
-            hasPendingUsername = false;
-            var u = pendingUsername ?? String.Empty;
-            if (string.IsNullOrEmpty(u))
+            pendingIdentity = null;
+            if (string.IsNullOrEmpty(pending.Username))
                 return;
-            EditorPrefs.SetString(IdentityPrefKey(RepoDir()), u);
-            if (!string.Equals(currentUsername, u, StringComparison.Ordinal))
+            // Cache it under the key it was resolved for (always valid for that repo+remote, even offline)...
+            EditorPrefs.SetString(IdentityPrefKey(pending.RepoDir, pending.Remote), pending.Username);
+            // ...but only adopt it as the LIVE identity if that repo+remote is still the current context: the
+            // user may have switched repo/remote while the lookup was in flight, and the old answer must not
+            // overwrite the new context's identity.
+            if (!string.Equals(pending.RepoDir, RepoDir(), StringComparison.Ordinal)
+                || !string.Equals(pending.Remote, CurrentRemoteUrl(), StringComparison.Ordinal))
+                return;
+            if (!string.Equals(currentUsername, pending.Username, StringComparison.Ordinal))
             {
-                currentUsername = u;
+                currentUsername = pending.Username;
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
             }
         }
@@ -729,18 +766,26 @@ namespace Unity.VersionControl.Git.UI
             return locks.Any(x => repositoryPath == x.Path && (!isLockedByCurrentUser || x.Owner.Name == currentUsername));
         }
 
+        // Per-lock signature (guid + owner + id) used to decide whether a repaint is needed: comparing only
+        // the GUID set would miss a lock that stays on the same asset but changes owner/id (a steal/handover).
+        private static List<string> lockSignatures = new List<string>();
+
         private static void OnLocksUpdate()
         {
             var newGuidsLocks = new List<string>();
+            var newSignatures = new List<string>();
             foreach (var lck in locks)
             {
                 SPath repositoryPath = lck.Path;
                 SPath assetPath = repositoryPath.RelativeToProject(manager.Environment);
-                newGuidsLocks.Add(AssetDatabase.AssetPathToGUID(assetPath));
+                var guid = AssetDatabase.AssetPathToGUID(assetPath);
+                newGuidsLocks.Add(guid);
+                newSignatures.Add(guid + "|" + (lck.Owner.Name ?? "") + "|" + lck.ID);
             }
 
-            bool changed = !newGuidsLocks.SequenceEqual(guidsLocks);
+            bool changed = !newSignatures.SequenceEqual(lockSignatures);
             guidsLocks = newGuidsLocks;
+            lockSignatures = newSignatures;
 
             // The authoritative list just arrived: drop optimistic guesses it now reflects (a predicted
             // lock that showed up, or a predicted unlock whose file is gone), keeping the rest in flight.

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using Unity.Editor.Tasks;
 
@@ -7,6 +8,7 @@ namespace Unity.VersionControl.Git.Tasks
     {
         private const string TaskName = "git lfs lock";
         private readonly string args;
+        private readonly string path;
 
         public GitLockTask(IPlatform platform,
                 string path,
@@ -15,10 +17,13 @@ namespace Unity.VersionControl.Git.Tasks
         {
             Name = TaskName;
             Guard.ArgumentNotNullOrWhiteSpace(path, "path");
+            this.path = path;
             args = $"lfs lock \"{path}\"";
         }
 
         public override string ProcessArguments => args;
+        // Pass the path as a discrete argument so spaces/quotes/option-looking names can't break parsing.
+        public override IReadOnlyList<string> ProcessArgumentList => new[] { "lfs", "lock", path };
         public override TaskAffinity Affinity { get; set; } = TaskAffinity.Exclusive;
         public override string Message { get; set; } = "Locking file...";
     }

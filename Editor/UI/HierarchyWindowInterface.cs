@@ -15,12 +15,15 @@ namespace Unity.VersionControl.Git.UI
 {
     public static class HierarchyWindowInterface
     {
-        private static Dictionary<ItemId, ProjectWindowInterface.StatusBadge> iconCache;
+        // Cache only the (stable for the item's lifetime) instanceID -> guid resolution; the badge itself is
+        // resolved LIVE each draw, so lock/status/identity/outdated changes show immediately instead of going
+        // stale until the next domain reload.
+        private static Dictionary<ItemId, string> guidCache;
         private static float rightEdge;
 
         public static void Initialize()
         {
-            iconCache = new Dictionary<ItemId, ProjectWindowInterface.StatusBadge>();
+            guidCache = new Dictionary<ItemId, string>();
 #if UNITY_6000_5_OR_NEWER
             EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyItemTryToDrawStatusIcon;
 #else
@@ -33,9 +36,9 @@ namespace Unity.VersionControl.Git.UI
             if (!ApplicationConfiguration.HierarchyIconsEnabled)
                 return;
 
-            if (!iconCache.TryGetValue(instanceID, out ProjectWindowInterface.StatusBadge badge))
+            if (!guidCache.TryGetValue(instanceID, out string guid))
             {
-                string guid = null;
+                guid = string.Empty;
 #if UNITY_6000_5_OR_NEWER
                 GameObject hierarchyGO = EditorUtility.EntityIdToObject(instanceID) as GameObject;
 #else
@@ -59,14 +62,11 @@ namespace Unity.VersionControl.Git.UI
                         }
                     }
 
-                    if (string.IsNullOrEmpty(scenePath))
+                    if (!string.IsNullOrEmpty(scenePath))
                     {
-                        iconCache.Add(instanceID, default);
-                        return;
+                        guid = AssetDatabase.AssetPathToGUID(scenePath);
+                        rightEdge = selectionRect.x;
                     }
-
-                    guid = AssetDatabase.AssetPathToGUID(scenePath);
-                    rightEdge = selectionRect.x;
                 }
                 else
                 {
@@ -80,14 +80,14 @@ namespace Unity.VersionControl.Git.UI
                     }
                 }
 
-                if (guid != null)
-                {
-                    badge = ProjectWindowInterface.GetBadgeForAssetGUID(guid);
-                }
-
-                iconCache.Add(instanceID, badge);
+                guidCache.Add(instanceID, guid ?? string.Empty);
             }
 
+            if (string.IsNullOrEmpty(guid))
+                return;
+
+            // Resolve the badge live (cheap, same as the project window) so it never goes stale.
+            ProjectWindowInterface.StatusBadge badge = ProjectWindowInterface.GetBadgeForAssetGUID(guid);
             if (!badge.HasValue)
                 return;
 

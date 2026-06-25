@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using Unity.Editor.Tasks;
@@ -10,6 +11,7 @@ namespace Unity.VersionControl.Git.Tasks
     {
         private const string TaskName = "git lfs unlock";
         private readonly string arguments;
+        private readonly List<string> argumentList;
 
         public GitUnlockTask(IPlatform platform,
             SPath path, bool force,
@@ -21,14 +23,18 @@ namespace Unity.VersionControl.Git.Tasks
             Name = TaskName;
             var stringBuilder = new StringBuilder("lfs unlock ");
 
+            argumentList = new List<string> { "lfs", "unlock" };
             if (force)
             {
                 stringBuilder.Append("--force ");
+                argumentList.Add("--force");
             }
 
             stringBuilder.Append("\"");
             stringBuilder.Append(path.ToString(SlashMode.Forward));
             stringBuilder.Append("\"");
+            // Discrete path argument: no quoting, so spaces/quotes/option-looking names can't break parsing.
+            argumentList.Add(path.ToString(SlashMode.Forward));
 
             arguments = stringBuilder.ToString();
         }
@@ -45,18 +51,22 @@ namespace Unity.VersionControl.Git.Tasks
             Name = TaskName;
             var stringBuilder = new StringBuilder("lfs unlock ");
 
+            argumentList = new List<string> { "lfs", "unlock" };
             if (force)
             {
                 stringBuilder.Append("--force ");
+                argumentList.Add("--force");
             }
 
             stringBuilder.Append("--id=");
             stringBuilder.Append(id);
+            argumentList.Add("--id=" + id);
 
             arguments = stringBuilder.ToString();
         }
 
         public override string ProcessArguments => arguments;
+        public override IReadOnlyList<string> ProcessArgumentList => argumentList;
         public override TaskAffinity Affinity { get; set; } = TaskAffinity.Exclusive;
         public override string Message { get; set; } = "Unlocking file...";
 
