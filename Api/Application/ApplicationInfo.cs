@@ -8,15 +8,17 @@ namespace Unity.VersionControl.Git
     public static partial class ApplicationInfo
     {
 #if GFU_DEBUG
-        public const string ApplicationName = "Git for Unity Debug";
+        public const string ApplicationName = "Git Waypoint Debug";
         public const string ApplicationProvider = "Unity";
-        public const string ApplicationSafeName = "GitForUnityDebug";
+        public const string ApplicationSafeName = "GitWaypointDebug";
 #else
-        public const string ApplicationName = "GitForUnity";
-        public const string ApplicationProvider = "Unity";
-        public const string ApplicationSafeName = "GitForUnity";
+        // Drives the per-user folders ~/Library/Logs/<ApplicationName>/ and
+        // ~/Library/Application Support/<ApplicationName>/ (bundled-git cache), so keep it on-brand.
+        public const string ApplicationName = "GitWaypoint";
+        public const string ApplicationProvider = "WAY Experience"; // metadata only (not referenced anywhere)
+        public const string ApplicationSafeName = "GitWaypoint";
 #endif
-        public const string ApplicationDescription = "Git for Unity";
+        public const string ApplicationDescription = "Git Waypoint";
 
         public static string Version { get; } =  ThisAssembly.GetInformationalVersion();
     }
@@ -25,7 +27,7 @@ namespace Unity.VersionControl.Git
 internal static partial class ThisAssembly {
         // Last resort only (reached if both the stamped attribute and the Package Manager lookup fail).
         // The real version comes from package.json via PackageInfo.FindForAssembly, so this rarely shows.
-        public const string FallbackVersion = "0.1.15";
+        public const string FallbackVersion = "0.1.16";
 
     public static string GetInformationalVersion()
     {
