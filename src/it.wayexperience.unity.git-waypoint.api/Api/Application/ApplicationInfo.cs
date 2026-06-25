@@ -23,31 +23,50 @@ namespace Unity.VersionControl.Git
 }
 
 internal static partial class ThisAssembly {
-        // Used when no build-stamped version is available (embedded source / unstamped package),
-        // so the editor reports a real version instead of "0".
-        public const string FallbackVersion = "0.1.2";
+        // Last resort only (reached if both the stamped attribute and the Package Manager lookup fail).
+        // The real version comes from package.json via PackageInfo.FindForAssembly, so this rarely shows.
+        public const string FallbackVersion = "0.1.10";
 
     public static string GetInformationalVersion()
     {
+        // 1) CI-stamped assembly version (nbgv), when a real build produced one.
         try
         {
             var attr = System.Attribute.GetCustomAttribute(typeof(ThisAssembly).Assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute)) as System.Reflection.AssemblyInformationalVersionAttribute;
             if (attr != null && !string.IsNullOrEmpty(attr.InformationalVersion) && !attr.InformationalVersion.StartsWith("0"))
                 return attr.InformationalVersion;
-            var basePath = Platform.Instance?.Environment.ExtensionInstallPath ?? SPath.Default;
-            if (!basePath.IsInitialized)
-                return FallbackVersion;
-            var versionFile = basePath.Parent.Combine("version.json");
-            if (!versionFile.FileExists())
-                return FallbackVersion;
-            var version = versionFile.ReadAllText().FromJson<VersionJson>(true);
-            var parsed = TheVersion.Parse(version.version).Version;
-            return string.IsNullOrEmpty(parsed) || parsed.StartsWith("0") ? FallbackVersion : parsed;
         }
-        catch
+        catch { }
+
+        // 2) The installed package's own version - this reads package.json via the Package Manager, so the
+        // reported version always matches the package that's actually running (no manual bump to keep in sync).
+        try
         {
-            return FallbackVersion;
+            var pkg = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(ThisAssembly).Assembly);
+            if (pkg != null && !string.IsNullOrEmpty(pkg.version))
+                return pkg.version;
         }
+        catch { }
+
+        // 3) Legacy: a version.json next to the install path.
+        try
+        {
+            var basePath = Platform.Instance?.Environment.ExtensionInstallPath ?? SPath.Default;
+            if (basePath.IsInitialized)
+            {
+                var versionFile = basePath.Parent.Combine("version.json");
+                if (versionFile.FileExists())
+                {
+                    var version = versionFile.ReadAllText().FromJson<VersionJson>(true);
+                    var parsed = TheVersion.Parse(version.version).Version;
+                    if (!string.IsNullOrEmpty(parsed) && !parsed.StartsWith("0"))
+                        return parsed;
+                }
+            }
+        }
+        catch { }
+
+        return FallbackVersion;
     }
 
     public class VersionJson
