@@ -1415,6 +1415,18 @@ namespace Unity.VersionControl.Git.UI
             StyleButton(saveRemote, true); saveRemote.style.marginTop = 4; saveRemote.style.marginBottom = 6; saveRemote.style.alignSelf = Align.FlexEnd;
             repoCard.Add(saveRemote);
 
+            // Read-only: how the server addresses you for locks. Resolved server-side (git lfs locks
+            // --verify), so there's nothing to configure - just shown so you can confirm it's right.
+            var who = ProjectWindowInterface.CurrentUsername;
+            var lockIdField = new TextField { value = string.IsNullOrEmpty(who) ? "—" : who, isReadOnly = true };
+            Roomy(lockIdField, 24);
+            lockIdField.SetEnabled(false);
+            repoCard.Add(FormField("Lock identity (read-only)", lockIdField));
+            repoCard.Add(new Label("Who the server sees you as for file locks — used to tell your locks from teammates'. Learned automatically once you lock a file.")
+            {
+                style = { color = GitForUnityTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 6 }
+            });
+
             var setupRow = Row();
             var gitattr = new Button(() =>
             {

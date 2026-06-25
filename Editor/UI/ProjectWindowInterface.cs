@@ -423,26 +423,91 @@ namespace Unity.VersionControl.Git.UI
             }
         }
 
-        // Resolve the LFS lock owner from `lfs.lockUser`, falling back to user.name (the keychain-based
-        // lookup is unfinished upstream). Pure: safe to call off the main thread once repoDir is captured.
-        private static string ResolveLockUser(string repoDir)
+        // The single source of truth for "who am I" on locks, used by both the badges here and the edit
+        // block in LfsLocksModificationProcessor. Authoritative and zero-config: ask the server which locks
+        // are "ours" (`git lfs locks --verify`) - the owner name it puts on one of them is exactly how the
+        // server addresses us, so the later owner-name comparison is exact (no display-name guessing).
+        // The init value comes from cache/config instantly; the server confirmation lands asynchronously.
+
+        private static string IdentityPrefKey(string repoDir)
         {
+            return "waygit.lockIdentity:" + (repoDir ?? "");
+        }
+
+        // Returns the owner name the server reports on one of OUR locks, or null. A server round-trip, so
+        // only call off the main thread; failures (offline, no git-lfs) return null and let callers fall back.
+        private static string ReadOwnLockName(string repoDir)
+        {
+            var json = RunGit(repoDir, "lfs locks --verify --json", 8000);
+            if (string.IsNullOrEmpty(json))
+                return null;
+            try
+            {
+                var parsed = JsonUtility.FromJson<LfsLocksVerify>(json);
+                if (parsed != null && parsed.ours != null && parsed.ours.Length > 0 && parsed.ours[0].owner != null)
+                    return parsed.ours[0].owner.name;
+            }
+            catch { }
+            return null;
+        }
+
+        // Pure git invocation with a timeout (no Unity APIs), safe off the main thread.
+        private static string RunGit(string repoDir, string args, int timeoutMs)
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("git", args)
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = repoDir,
+                };
+                if (System.IO.Path.PathSeparator == ':')
+                {
+                    string current = psi.EnvironmentVariables.ContainsKey("PATH")
+                        ? psi.EnvironmentVariables["PATH"]
+                        : System.Environment.GetEnvironmentVariable("PATH");
+                    psi.EnvironmentVariables["PATH"] = "/opt/homebrew/bin:/usr/local/bin" + (string.IsNullOrEmpty(current) ? "" : (":" + current));
+                }
+                using (var p = System.Diagnostics.Process.Start(psi))
+                {
+                    string output = p.StandardOutput.ReadToEnd();
+                    p.WaitForExit(timeoutMs);
+                    return output;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Init (main thread): set the identity instantly from the cached server name or local git config -
+        // NO network here - then confirm with the server asynchronously so startup never blocks.
+        private static void UpdateCurrentUsername()
+        {
+            if (Repository == null) { currentUsername = String.Empty; return; }
+            currentUsername = ResolveLockUserLocal(RepoDir());
+            RefreshCurrentUsernameAsync();
+        }
+
+        // Instant, no server round-trip: last server-confirmed name, else local git config.
+        private static string ResolveLockUserLocal(string repoDir)
+        {
+            var cached = EditorPrefs.GetString(IdentityPrefKey(repoDir), null);
+            if (!string.IsNullOrEmpty(cached))
+                return cached;
             var username = ReadGitConfig(repoDir, "lfs.lockUser");
             if (string.IsNullOrEmpty(username))
                 username = ReadGitConfig(repoDir, "user.name");
             return username ?? String.Empty;
         }
 
-        // Synchronous read at init (runs once, main thread).
-        private static void UpdateCurrentUsername()
-        {
-            currentUsername = Repository != null ? ResolveLockUser(RepoDir()) : String.Empty;
-        }
-
-        // The identity is read once at init, so changing `lfs.lockUser` later (or a real teammate's lock
-        // showing up) wouldn't be reflected until a domain reload. Re-read it whenever the lock set changes,
-        // off the main thread (git spawn), and apply on the main thread only if it actually changed - so
-        // "locked by me / by other" stays correct without a restart.
+        // Confirm the identity with the server off the main thread. We only UPDATE when the server gives an
+        // answer (a lock it says is ours); when it can't (offline, or you hold no locks yet) we leave the
+        // current value untouched - so going offline never clobbers the known identity with a local guess.
         private static volatile string pendingUsername;
         private static volatile bool hasPendingUsername;
 
@@ -450,21 +515,29 @@ namespace Unity.VersionControl.Git.UI
         {
             if (Repository == null)
                 return;
-            string dir = RepoDir(); // capture on the main thread
+            string dir = RepoDir(); // capture on the main thread (no Unity APIs run off-thread below)
             System.Threading.Tasks.Task.Run(() =>
             {
-                var u = ResolveLockUser(dir);
-                pendingUsername = u;
-                hasPendingUsername = true; // set value before flag so the reader sees a consistent pair
+                var server = ReadOwnLockName(dir); // pure git; null if offline or no own locks
+                if (!string.IsNullOrEmpty(server))
+                {
+                    pendingUsername = server;
+                    hasPendingUsername = true; // set value before flag so the reader sees a consistent pair
+                }
             });
         }
 
+        // Runs on EditorApplication.update (main thread): applies a server-confirmed identity and remembers
+        // it for offline use. EditorPrefs/RepaintAllViews are main-thread-only, hence done here.
         private static void ApplyPendingUsername()
         {
             if (!hasPendingUsername)
                 return;
             hasPendingUsername = false;
             var u = pendingUsername ?? String.Empty;
+            if (string.IsNullOrEmpty(u))
+                return;
+            EditorPrefs.SetString(IdentityPrefKey(RepoDir()), u);
             if (!string.Equals(currentUsername, u, StringComparison.Ordinal))
             {
                 currentUsername = u;
@@ -707,4 +780,9 @@ namespace Unity.VersionControl.Git.UI
                 GUI.Label(rect, new GUIContent(string.Empty, tooltip));
         }
     }
+
+    // Shape of `git lfs locks --verify --json` for JsonUtility.
+    [Serializable] class LfsLockOwner { public string name; }
+    [Serializable] class LfsLockEntry { public string id; public string path; public LfsLockOwner owner; }
+    [Serializable] class LfsLocksVerify { public LfsLockEntry[] ours; public LfsLockEntry[] theirs; }
 }
