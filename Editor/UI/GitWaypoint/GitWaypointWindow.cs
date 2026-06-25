@@ -17,7 +17,7 @@ namespace Unity.VersionControl.Git.UI
     // History/Branches/Settings show a placeholder that opens the classic IMGUI window for now (those IMGUI
     // views are too coupled to their host to embed cleanly; they'll be rebuilt natively next). The classic
     // window stays available and untouched.
-    class GitForUnityWindow : EditorWindow
+    class GitWaypointWindow : EditorWindow
     {
         enum Tab { Changes, Locks, History, Branches, Settings }
         enum LockFilter { All, Mine, Team }
@@ -100,7 +100,7 @@ namespace Unity.VersionControl.Git.UI
         [MenuItem("Window/Git Waypoint")]
         public static void Open()
         {
-            var window = GetWindow<GitForUnityWindow>();
+            var window = GetWindow<GitWaypointWindow>();
             window.ApplyTitle();
             window.minSize = new Vector2(360, 420);
             window.Show();
@@ -191,14 +191,14 @@ namespace Unity.VersionControl.Git.UI
             identityBanner.style.marginTop = 8; identityBanner.style.marginBottom = 2;
             identityBanner.style.paddingTop = 8; identityBanner.style.paddingBottom = 8;
             identityBanner.style.paddingLeft = 10; identityBanner.style.paddingRight = 10;
-            identityBanner.style.backgroundColor = new Color(GitForUnityTheme.Accent.r, GitForUnityTheme.Accent.g, GitForUnityTheme.Accent.b, 0.12f);
-            GitForUnityTheme.Round(identityBanner, 4);
+            identityBanner.style.backgroundColor = new Color(GitWaypointTheme.Accent.r, GitWaypointTheme.Accent.g, GitWaypointTheme.Accent.b, 0.12f);
+            GitWaypointTheme.Round(identityBanner, 4);
 
             var col = new VisualElement { style = { flexGrow = 1, flexShrink = 1, marginRight = 10 } };
             col.Add(new Label("Set your Git identity")
-                { style = { unityFontStyleAndWeight = FontStyle.Bold, color = GitForUnityTheme.Text, fontSize = 12 } });
+                { style = { unityFontStyleAndWeight = FontStyle.Bold, color = GitWaypointTheme.Text, fontSize = 12 } });
             col.Add(new Label("Add your name and email in Settings before you can commit or sync.")
-                { style = { color = GitForUnityTheme.Subdued, fontSize = 11, whiteSpace = WhiteSpace.Normal } });
+                { style = { color = GitWaypointTheme.Subdued, fontSize = 11, whiteSpace = WhiteSpace.Normal } });
             identityBanner.Add(col);
 
             var go = new Button(() => SetActiveTab(Tab.Settings)) { text = "Open Settings" };
@@ -261,7 +261,7 @@ namespace Unity.VersionControl.Git.UI
             var root = rootVisualElement;
             root.Clear();
             root.style.flexDirection = FlexDirection.Column;
-            root.style.backgroundColor = GitForUnityTheme.Window;
+            root.style.backgroundColor = GitWaypointTheme.Window;
 
             BuildHeader(root);
             BuildToolbar(root);
@@ -297,11 +297,11 @@ namespace Unity.VersionControl.Git.UI
             statusStrip.style.flexShrink = 0;
             statusStrip.style.paddingLeft = 10; statusStrip.style.paddingRight = 10;
             statusStrip.style.paddingTop = 4; statusStrip.style.paddingBottom = 4;
-            statusStrip.style.backgroundColor = GitForUnityTheme.Panel;
+            statusStrip.style.backgroundColor = GitWaypointTheme.Panel;
             Border(statusStrip, top: 1);
             statusIcon = new Label("") { style = { width = 12, fontSize = 11, flexShrink = 0 } };
-            statusMessage = new Label("Ready") { style = { flexGrow = 1, fontSize = 11, color = GitForUnityTheme.Subdued, marginLeft = 4, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } };
-            statusTime = new Label("") { style = { fontSize = 10, color = GitForUnityTheme.Subdued, flexShrink = 0, marginLeft = 8 } };
+            statusMessage = new Label("Ready") { style = { flexGrow = 1, fontSize = 11, color = GitWaypointTheme.Subdued, marginLeft = 4, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } };
+            statusTime = new Label("") { style = { fontSize = 10, color = GitWaypointTheme.Subdued, flexShrink = 0, marginLeft = 8 } };
             statusStrip.Add(statusIcon);
             statusStrip.Add(statusMessage);
             statusStrip.Add(statusTime);
@@ -314,7 +314,7 @@ namespace Unity.VersionControl.Git.UI
             header.style.alignItems = Align.Center;
             header.style.paddingTop = 8; header.style.paddingBottom = 8;
             header.style.paddingLeft = 10; header.style.paddingRight = 10;
-            header.style.backgroundColor = GitForUnityTheme.Panel;
+            header.style.backgroundColor = GitWaypointTheme.Panel;
             Border(header, bottom: 1);
 
             var branchBox = new VisualElement { style = { flexDirection = FlexDirection.Column, flexGrow = 1, overflow = Overflow.Hidden } };
@@ -322,12 +322,12 @@ namespace Unity.VersionControl.Git.UI
             branchRow.style.alignItems = Align.Center;
             branchRow.tooltip = "Switch branch";
             branchRow.RegisterCallback<MouseDownEvent>(_ => ShowBranchMenu());
-            branchLabel = new Label("…") { style = { unityFontStyleAndWeight = FontStyle.Bold, fontSize = 14, color = GitForUnityTheme.Text } };
-            var caret = new Label(" ▾") { style = { color = GitForUnityTheme.Subdued, fontSize = 11, flexShrink = 0 } };
+            branchLabel = new Label("…") { style = { unityFontStyleAndWeight = FontStyle.Bold, fontSize = 14, color = GitWaypointTheme.Text } };
+            var caret = new Label(" ▾") { style = { color = GitWaypointTheme.Subdued, fontSize = 11, flexShrink = 0 } };
             branchRow.Add(branchLabel);
             branchRow.Add(caret);
             remoteLabel = new Label("") { style = { whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } };
-            GitForUnityTheme.ApplyMono(remoteLabel);
+            GitWaypointTheme.ApplyMono(remoteLabel);
             branchBox.Add(branchRow);
             branchBox.Add(remoteLabel);
             header.Add(branchBox);
@@ -336,7 +336,7 @@ namespace Unity.VersionControl.Git.UI
             syncBox.style.alignItems = Align.Center;
             syncBox.style.flexShrink = 0;
             syncLabel = new Label("") { style = { fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold } };
-            dotsLabel = new Label("") { style = { width = 18, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleLeft, color = GitForUnityTheme.Accent } };
+            dotsLabel = new Label("") { style = { width = 18, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleLeft, color = GitWaypointTheme.Accent } };
             syncBox.Add(syncLabel);
             syncBox.Add(dotsLabel);
             header.Add(syncBox);
@@ -360,7 +360,7 @@ namespace Unity.VersionControl.Git.UI
         void BuildTabBar(VisualElement root)
         {
             var bar = Row();
-            bar.style.backgroundColor = GitForUnityTheme.Panel;
+            bar.style.backgroundColor = GitWaypointTheme.Panel;
             Border(bar, bottom: 1);
             foreach (Tab t in Enum.GetValues(typeof(Tab)))
             {
@@ -376,7 +376,7 @@ namespace Unity.VersionControl.Git.UI
                 b.style.fontSize = 13;
                 b.style.color = TabInactive;
                 // hover lifts the colour, but never overrides the active tab's accent
-                b.RegisterCallback<MouseEnterEvent>(_ => { if (captured != activeTab) b.style.color = GitForUnityTheme.Text; });
+                b.RegisterCallback<MouseEnterEvent>(_ => { if (captured != activeTab) b.style.color = GitWaypointTheme.Text; });
                 b.RegisterCallback<MouseLeaveEvent>(_ => { if (captured != activeTab) b.style.color = TabInactive; });
                 tabButtons[t] = b;
                 bar.Add(b);
@@ -392,8 +392,8 @@ namespace Unity.VersionControl.Git.UI
             foreach (var kv in tabButtons)
             {
                 bool on = kv.Key == tab;
-                kv.Value.style.color = on ? GitForUnityTheme.Accent : TabInactive;
-                kv.Value.style.borderBottomColor = on ? GitForUnityTheme.Accent : Color.clear;
+                kv.Value.style.color = on ? GitWaypointTheme.Accent : TabInactive;
+                kv.Value.style.borderBottomColor = on ? GitWaypointTheme.Accent : Color.clear;
             }
             // Pull the data the heavy tabs need the first time they're opened.
             var repo = Repository;
@@ -440,7 +440,7 @@ namespace Unity.VersionControl.Git.UI
             {
                 branchLabel.text = "Not connected";
                 remoteLabel.text = "";
-                if (runningOp == null) { syncLabel.text = "Open a Git project to get started"; syncLabel.style.color = GitForUnityTheme.Subdued; }
+                if (runningOp == null) { syncLabel.text = "Open a Git project to get started"; syncLabel.style.color = GitWaypointTheme.Subdued; }
                 SetRemoteButtonsEnabled(false);
                 return;
             }
@@ -468,11 +468,11 @@ namespace Unity.VersionControl.Git.UI
 
         void UpdateSyncLabel(int ahead, int behind, bool hasRemote)
         {
-            if (!hasRemote) { syncLabel.text = "No remote"; syncLabel.style.color = GitForUnityTheme.Subdued; return; }
-            if (behind > 0 && ahead > 0) { syncLabel.text = "↑" + ahead + " ↓" + behind + " diverged"; syncLabel.style.color = GitForUnityTheme.Outdated; }
-            else if (behind > 0) { syncLabel.text = "↓" + behind + " to pull"; syncLabel.style.color = GitForUnityTheme.Outdated; }
-            else if (ahead > 0) { syncLabel.text = "↑" + ahead + " to push"; syncLabel.style.color = GitForUnityTheme.Accent; }
-            else { syncLabel.text = "✓ Up to date"; syncLabel.style.color = GitForUnityTheme.UpToDate; }
+            if (!hasRemote) { syncLabel.text = "No remote"; syncLabel.style.color = GitWaypointTheme.Subdued; return; }
+            if (behind > 0 && ahead > 0) { syncLabel.text = "↑" + ahead + " ↓" + behind + " diverged"; syncLabel.style.color = GitWaypointTheme.Outdated; }
+            else if (behind > 0) { syncLabel.text = "↓" + behind + " to pull"; syncLabel.style.color = GitWaypointTheme.Outdated; }
+            else if (ahead > 0) { syncLabel.text = "↑" + ahead + " to push"; syncLabel.style.color = GitWaypointTheme.Accent; }
+            else { syncLabel.text = "✓ Up to date"; syncLabel.style.color = GitWaypointTheme.UpToDate; }
         }
 
         // ---- Changes tab ---------------------------------------------------------------------------
@@ -495,11 +495,11 @@ namespace Unity.VersionControl.Git.UI
             changesFilterButton.style.height = 24;
             changesFilterButton.style.marginLeft = 8; changesFilterButton.style.marginRight = 0; changesFilterButton.style.marginTop = 0; changesFilterButton.style.marginBottom = 0;
             changesFilterButton.style.paddingLeft = 10; changesFilterButton.style.paddingRight = 10;
-            changesFilterButton.style.backgroundColor = GitForUnityTheme.Elevated;
-            changesFilterButton.style.color = GitForUnityTheme.Text;
+            changesFilterButton.style.backgroundColor = GitWaypointTheme.Elevated;
+            changesFilterButton.style.color = GitWaypointTheme.Text;
             changesFilterButton.style.borderTopWidth = changesFilterButton.style.borderBottomWidth = changesFilterButton.style.borderLeftWidth = changesFilterButton.style.borderRightWidth = 1;
-            changesFilterButton.style.borderTopColor = changesFilterButton.style.borderBottomColor = changesFilterButton.style.borderLeftColor = changesFilterButton.style.borderRightColor = GitForUnityTheme.Border;
-            GitForUnityTheme.Round(changesFilterButton, 6);
+            changesFilterButton.style.borderTopColor = changesFilterButton.style.borderBottomColor = changesFilterButton.style.borderLeftColor = changesFilterButton.style.borderRightColor = GitWaypointTheme.Border;
+            GitWaypointTheme.Round(changesFilterButton, 6);
             topRow.Add(changesFilterButton);
             tab.Add(topRow);
 
@@ -510,9 +510,9 @@ namespace Unity.VersionControl.Git.UI
             selectAllToggle = new Toggle { value = true };
             selectAllToggle.RegisterValueChangedCallback(e => SetAllChecked(e.newValue));
             changesSelRow.Add(selectAllToggle);
-            changesSelRow.Add(new Label("Select all") { style = { marginLeft = 4, color = GitForUnityTheme.Text } });
+            changesSelRow.Add(new Label("Select all") { style = { marginLeft = 4, color = GitWaypointTheme.Text } });
             changesSelRow.Add(Spacer());
-            changesCount = new Label("") { style = { color = GitForUnityTheme.Subdued, fontSize = 11 } };
+            changesCount = new Label("") { style = { color = GitWaypointTheme.Subdued, fontSize = 11 } };
             changesSelRow.Add(changesCount);
             tab.Add(changesSelRow);
 
@@ -523,18 +523,18 @@ namespace Unity.VersionControl.Git.UI
             outdatedBanner.style.marginLeft = 10; outdatedBanner.style.marginRight = 10; outdatedBanner.style.marginBottom = 6;
             outdatedBanner.style.paddingTop = 8; outdatedBanner.style.paddingBottom = 8;
             outdatedBanner.style.paddingLeft = 10; outdatedBanner.style.paddingRight = 10;
-            outdatedBanner.style.backgroundColor = new Color(GitForUnityTheme.Outdated.r, GitForUnityTheme.Outdated.g, GitForUnityTheme.Outdated.b, 0.10f);
-            GitForUnityTheme.Round(outdatedBanner, 6);
+            outdatedBanner.style.backgroundColor = new Color(GitWaypointTheme.Outdated.r, GitWaypointTheme.Outdated.g, GitWaypointTheme.Outdated.b, 0.10f);
+            GitWaypointTheme.Round(outdatedBanner, 6);
             outdatedBanner.style.borderTopWidth = outdatedBanner.style.borderBottomWidth = outdatedBanner.style.borderLeftWidth = outdatedBanner.style.borderRightWidth = 1;
-            var bannerBorder = new Color(GitForUnityTheme.Outdated.r, GitForUnityTheme.Outdated.g, GitForUnityTheme.Outdated.b, 0.5f);
+            var bannerBorder = new Color(GitWaypointTheme.Outdated.r, GitWaypointTheme.Outdated.g, GitWaypointTheme.Outdated.b, 0.5f);
             outdatedBanner.style.borderTopColor = outdatedBanner.style.borderBottomColor = outdatedBanner.style.borderLeftColor = outdatedBanner.style.borderRightColor = bannerBorder;
 
-            outdatedBanner.Add(new Label("⚠") { style = { color = GitForUnityTheme.Outdated, fontSize = 16, marginRight = 8, unityTextAlign = TextAnchor.MiddleCenter } });
+            outdatedBanner.Add(new Label("⚠") { style = { color = GitWaypointTheme.Outdated, fontSize = 16, marginRight = 8, unityTextAlign = TextAnchor.MiddleCenter } });
 
             var bannerCol = new VisualElement { style = { flexGrow = 1, flexDirection = FlexDirection.Column } };
-            outdatedBannerLabel = new Label("") { style = { color = GitForUnityTheme.Outdated, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.Normal } };
+            outdatedBannerLabel = new Label("") { style = { color = GitWaypointTheme.Outdated, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.Normal } };
             bannerCol.Add(outdatedBannerLabel);
-            bannerCol.Add(new Label("Pull to get the latest changes before pushing.") { style = { color = GitForUnityTheme.Subdued, fontSize = 11, whiteSpace = WhiteSpace.Normal } });
+            bannerCol.Add(new Label("Pull to get the latest changes before pushing.") { style = { color = GitWaypointTheme.Subdued, fontSize = 11, whiteSpace = WhiteSpace.Normal } });
             outdatedBanner.Add(bannerCol);
 
             var bannerPull = new Button(() => DoPull()) { text = "Pull" };
@@ -548,14 +548,14 @@ namespace Unity.VersionControl.Git.UI
 
             emptyLabel = new Label("No changes. Your working tree is clean.")
             {
-                style = { flexGrow = 1, color = GitForUnityTheme.Subdued, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 24, paddingBottom = 24, whiteSpace = WhiteSpace.Normal, display = DisplayStyle.None }
+                style = { flexGrow = 1, color = GitWaypointTheme.Subdued, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 24, paddingBottom = 24, whiteSpace = WhiteSpace.Normal, display = DisplayStyle.None }
             };
             tab.Add(emptyLabel);
 
             var panel = new VisualElement();
             panel.style.flexShrink = 0;
             Border(panel, top: 1);
-            panel.style.backgroundColor = GitForUnityTheme.Panel;
+            panel.style.backgroundColor = GitWaypointTheme.Panel;
             panel.style.paddingTop = 12; panel.style.paddingBottom = 12;
             panel.style.paddingLeft = 12; panel.style.paddingRight = 12;
 
@@ -773,8 +773,8 @@ namespace Unity.VersionControl.Git.UI
             row.Add(toggle);
 
             string letter; Color color;
-            GitForUnityTheme.DiffBadge(entry.Status, out letter, out color);
-            var badge = GitForUnityTheme.BadgeSquare(letter, color);
+            GitWaypointTheme.DiffBadge(entry.Status, out letter, out color);
+            var badge = GitWaypointTheme.BadgeSquare(letter, color);
             badge.style.marginLeft = 4; badge.style.marginRight = 6;
             row.Add(badge);
 
@@ -782,10 +782,10 @@ namespace Unity.VersionControl.Git.UI
 
             string pending = ProjectWindowInterface.IsPendingUnlock(entry.Path) ? "Releasing…"
                            : ProjectWindowInterface.IsPendingLock(entry.Path) ? "Locking…" : null;
-            if (pending != null) { var c = GitForUnityTheme.Chip(pending, GitForUnityTheme.Accent); c.style.marginLeft = 6; row.Add(c); }
-            else if (outdated) { var c = GitForUnityTheme.Chip("Outdated", GitForUnityTheme.Outdated); c.style.marginLeft = 6; row.Add(c); }
-            if (lockedByMe.Contains(sp)) { var c = GitForUnityTheme.Chip("Locked by you", GitForUnityTheme.UpToDate); c.style.marginLeft = 6; row.Add(c); }
-            else if (lockedByOther.ContainsKey(sp)) { var c = GitForUnityTheme.Chip(lockedByOther[sp] + " · locked", GitForUnityTheme.Conflict); c.style.marginLeft = 6; row.Add(c); }
+            if (pending != null) { var c = GitWaypointTheme.Chip(pending, GitWaypointTheme.Accent); c.style.marginLeft = 6; row.Add(c); }
+            else if (outdated) { var c = GitWaypointTheme.Chip("Outdated", GitWaypointTheme.Outdated); c.style.marginLeft = 6; row.Add(c); }
+            if (lockedByMe.Contains(sp)) { var c = GitWaypointTheme.Chip("Locked by you", GitWaypointTheme.UpToDate); c.style.marginLeft = 6; row.Add(c); }
+            else if (lockedByOther.ContainsKey(sp)) { var c = GitWaypointTheme.Chip(lockedByOther[sp] + " · locked", GitWaypointTheme.Conflict); c.style.marginLeft = 6; row.Add(c); }
 
             return row;
         }
@@ -799,10 +799,10 @@ namespace Unity.VersionControl.Git.UI
             box.style.height = CompactDensity ? 28 : 34;
 
             var nameRow = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center } };
-            nameRow.Add(new Label(sp.FileName) { style = { color = GitForUnityTheme.Text, fontSize = 12, flexShrink = 1, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
+            nameRow.Add(new Label(sp.FileName) { style = { color = GitWaypointTheme.Text, fontSize = 12, flexShrink = 1, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
             if (lfs)
             {
-                var lfsChip = GitForUnityTheme.Chip("LFS", GitForUnityTheme.Accent);
+                var lfsChip = GitWaypointTheme.Chip("LFS", GitWaypointTheme.Accent);
                 lfsChip.style.marginLeft = 6; lfsChip.style.flexShrink = 0;
                 nameRow.Add(lfsChip);
             }
@@ -813,7 +813,7 @@ namespace Unity.VersionControl.Git.UI
             if (!string.IsNullOrEmpty(dir))
             {
                 var pathLabel = new Label(dir) { style = { whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } };
-                GitForUnityTheme.ApplyMono(pathLabel);
+                GitWaypointTheme.ApplyMono(pathLabel);
                 pathLabel.style.fontSize = 10;
                 box.Add(pathLabel);
             }
@@ -850,8 +850,8 @@ namespace Unity.VersionControl.Git.UI
                 b.style.paddingLeft = 14; b.style.paddingRight = 14;
                 b.style.marginLeft = 4; b.style.marginRight = 0; b.style.marginTop = 0; b.style.marginBottom = 0;
                 b.style.borderTopWidth = b.style.borderBottomWidth = b.style.borderLeftWidth = b.style.borderRightWidth = 1;
-                b.style.borderTopColor = b.style.borderBottomColor = b.style.borderLeftColor = b.style.borderRightColor = GitForUnityTheme.Border;
-                GitForUnityTheme.Round(b, 7);
+                b.style.borderTopColor = b.style.borderBottomColor = b.style.borderLeftColor = b.style.borderRightColor = GitWaypointTheme.Border;
+                GitWaypointTheme.Round(b, 7);
                 lockFilterButtons[f] = b;
                 filterRow.Add(b);
             }
@@ -862,7 +862,7 @@ namespace Unity.VersionControl.Git.UI
 
             locksEmpty = new Label("No locks match your filters.")
             {
-                style = { flexGrow = 1, color = GitForUnityTheme.Subdued, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 24, paddingBottom = 24, whiteSpace = WhiteSpace.Normal, display = DisplayStyle.None }
+                style = { flexGrow = 1, color = GitWaypointTheme.Subdued, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 24, paddingBottom = 24, whiteSpace = WhiteSpace.Normal, display = DisplayStyle.None }
             };
             tab.Add(locksEmpty);
 
@@ -870,9 +870,9 @@ namespace Unity.VersionControl.Git.UI
             var footer = Row();
             footer.style.alignItems = Align.Center; footer.style.flexShrink = 0;
             footer.style.paddingLeft = 10; footer.style.paddingRight = 10; footer.style.paddingTop = 8; footer.style.paddingBottom = 8;
-            footer.style.backgroundColor = GitForUnityTheme.Panel;
+            footer.style.backgroundColor = GitWaypointTheme.Panel;
             Border(footer, top: 1);
-            lockAutoLabel = new Label("") { style = { flexGrow = 1, color = GitForUnityTheme.Subdued, fontSize = 11 } };
+            lockAutoLabel = new Label("") { style = { flexGrow = 1, color = GitWaypointTheme.Subdued, fontSize = 11 } };
             footer.Add(lockAutoLabel);
             var lockSettingsBtn = new Button(() => SetActiveTab(Tab.Settings)) { text = "Locking settings" };
             StyleButton(lockSettingsBtn, false); lockSettingsBtn.style.flexShrink = 0;
@@ -894,15 +894,15 @@ namespace Unity.VersionControl.Git.UI
             int stale = locks.Count(l => IsStale(l));
 
             lockStatsRow.Clear();
-            lockStatsRow.Add(StatCard("My locks", mine, GitForUnityTheme.UpToDate, false));
-            lockStatsRow.Add(StatCard("Team locks", team, GitForUnityTheme.Accent, false));
-            lockStatsRow.Add(StatCard("Stale > " + StaleHours + "h", stale, GitForUnityTheme.Outdated, true));
+            lockStatsRow.Add(StatCard("My locks", mine, GitWaypointTheme.UpToDate, false));
+            lockStatsRow.Add(StatCard("Team locks", team, GitWaypointTheme.Accent, false));
+            lockStatsRow.Add(StatCard("Stale > " + StaleHours + "h", stale, GitWaypointTheme.Outdated, true));
 
             foreach (var kv in lockFilterButtons)
             {
                 bool on = kv.Key == lockFilter;
-                kv.Value.style.backgroundColor = on ? GitForUnityTheme.Accent : GitForUnityTheme.Elevated;
-                kv.Value.style.color = on ? Color.white : GitForUnityTheme.Text;
+                kv.Value.style.backgroundColor = on ? GitWaypointTheme.Accent : GitWaypointTheme.Elevated;
+                kv.Value.style.color = on ? Color.white : GitWaypointTheme.Text;
             }
 
             var visible = locks
@@ -935,7 +935,7 @@ namespace Unity.VersionControl.Git.UI
 
             bool autoOn = LfsLocksModificationProcessor.AutoLockEnabled;
             lockAutoLabel.text = "● Automatic locking: " + (autoOn ? "On" : "Off");
-            lockAutoLabel.style.color = autoOn ? GitForUnityTheme.UpToDate : GitForUnityTheme.Subdued;
+            lockAutoLabel.style.color = autoOn ? GitWaypointTheme.UpToDate : GitWaypointTheme.Subdued;
         }
 
         VisualElement BuildPendingLockRow(string path, string status)
@@ -946,9 +946,9 @@ namespace Unity.VersionControl.Git.UI
             row.style.minHeight = 36;
             row.style.paddingLeft = 10; row.style.paddingRight = 10;
             Border(row, bottom: 1);
-            row.Add(Avatar(ProjectWindowInterface.CurrentUsername, GitForUnityTheme.UpToDate));
+            row.Add(Avatar(ProjectWindowInterface.CurrentUsername, GitWaypointTheme.UpToDate));
             var box = NamePathBox(sp, IsLfsTracked(sp.ToString())); box.style.marginLeft = 6; row.Add(box);
-            row.Add(new Label(status) { style = { color = GitForUnityTheme.Accent, fontSize = 11, marginLeft = 6, flexShrink = 0 } });
+            row.Add(new Label(status) { style = { color = GitWaypointTheme.Accent, fontSize = 11, marginLeft = 6, flexShrink = 0 } });
             return row;
         }
 
@@ -962,21 +962,21 @@ namespace Unity.VersionControl.Git.UI
             row.style.paddingTop = vpad; row.style.paddingBottom = vpad;
             Border(row, bottom: 1);
 
-            row.Add(Avatar(lck.Owner.Name, mine ? GitForUnityTheme.UpToDate : GitForUnityTheme.Accent));
+            row.Add(Avatar(lck.Owner.Name, mine ? GitWaypointTheme.UpToDate : GitWaypointTheme.Accent));
 
             var box = NamePathBox(lck.Path, IsLfsTracked(lck.Path.ToString()));
             box.style.marginLeft = 6;
             row.Add(box);
 
             var meta = new VisualElement { style = { flexDirection = FlexDirection.Column, alignItems = Align.FlexEnd, marginLeft = 6, marginRight = 6, flexShrink = 0 } };
-            meta.Add(new Label(mine ? "you" : lck.Owner.Name) { style = { color = GitForUnityTheme.Text, fontSize = 11 } });
-            var ageLabel = new Label(Ago(lck.LockedAt)) { style = { fontSize = 10, color = IsStale(lck) ? GitForUnityTheme.Outdated : GitForUnityTheme.Subdued } };
+            meta.Add(new Label(mine ? "you" : lck.Owner.Name) { style = { color = GitWaypointTheme.Text, fontSize = 11 } });
+            var ageLabel = new Label(Ago(lck.LockedAt)) { style = { fontSize = 10, color = IsStale(lck) ? GitWaypointTheme.Outdated : GitWaypointTheme.Subdued } };
             meta.Add(ageLabel);
             row.Add(meta);
 
             if (busy != null)
             {
-                row.Add(new Label(busy) { style = { color = GitForUnityTheme.Accent, fontSize = 11, flexShrink = 0 } });
+                row.Add(new Label(busy) { style = { color = GitWaypointTheme.Accent, fontSize = 11, flexShrink = 0 } });
             }
             else if (mine)
             {
@@ -1026,10 +1026,10 @@ namespace Unity.VersionControl.Git.UI
             card.style.marginRight = last ? 0 : 6;
             card.style.paddingTop = 6; card.style.paddingBottom = 6;
             card.style.paddingLeft = 8; card.style.paddingRight = 8;
-            card.style.backgroundColor = GitForUnityTheme.Elevated;
-            GitForUnityTheme.Round(card, 6);
+            card.style.backgroundColor = GitWaypointTheme.Elevated;
+            GitWaypointTheme.Round(card, 6);
             var n = new Label(count.ToString()) { style = { color = accent, fontSize = 18, unityFontStyleAndWeight = FontStyle.Bold } };
-            var l = new Label(label) { style = { color = GitForUnityTheme.Subdued, fontSize = 10 } };
+            var l = new Label(label) { style = { color = GitWaypointTheme.Subdued, fontSize = 10 } };
             card.Add(n); card.Add(l);
             return card;
         }
@@ -1038,7 +1038,7 @@ namespace Unity.VersionControl.Git.UI
         {
             var a = new VisualElement { style = { width = size, height = size, flexShrink = 0, alignItems = Align.Center, justifyContent = Justify.Center } };
             a.style.backgroundColor = new Color(color.r, color.g, color.b, 0.25f);
-            GitForUnityTheme.Round(a, size / 2f);
+            GitWaypointTheme.Round(a, size / 2f);
             a.Add(new Label(Initials(name)) { style = { color = color, fontSize = size <= 16 ? 8 : 10, unityFontStyleAndWeight = FontStyle.Bold } });
             return a;
         }
@@ -1058,20 +1058,20 @@ namespace Unity.VersionControl.Git.UI
         VisualElement BuildHistoryTab()
         {
             var tab = new VisualElement { style = { flexGrow = 1, flexDirection = FlexDirection.Column, display = DisplayStyle.None } };
-            historyHeader = new Label("") { style = { color = GitForUnityTheme.Subdued, fontSize = 11, paddingLeft = 10, paddingRight = 10, paddingTop = 8, paddingBottom = 6 } };
+            historyHeader = new Label("") { style = { color = GitWaypointTheme.Subdued, fontSize = 11, paddingLeft = 10, paddingRight = 10, paddingTop = 8, paddingBottom = 6 } };
             Border(historyHeader, bottom: 1);
             tab.Add(historyHeader);
             historyList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, minHeight = 0 } };
             tab.Add(historyList);
             historyEmpty = new Label("No history yet.")
             {
-                style = { flexGrow = 1, color = GitForUnityTheme.Subdued, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 24, paddingBottom = 24, display = DisplayStyle.None }
+                style = { flexGrow = 1, color = GitWaypointTheme.Subdued, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 24, paddingBottom = 24, display = DisplayStyle.None }
             };
             tab.Add(historyEmpty);
             historyDetail = new VisualElement();
             historyDetail.style.flexShrink = 0;
             historyDetail.style.display = DisplayStyle.None;
-            historyDetail.style.backgroundColor = GitForUnityTheme.Panel;
+            historyDetail.style.backgroundColor = GitWaypointTheme.Panel;
             historyDetail.style.paddingTop = 10; historyDetail.style.paddingBottom = 10;
             historyDetail.style.paddingLeft = 12; historyDetail.style.paddingRight = 12;
             Border(historyDetail, top: 1);
@@ -1115,14 +1115,14 @@ namespace Unity.VersionControl.Git.UI
             row.style.alignItems = Align.FlexStart;
             row.style.paddingLeft = 10; row.style.paddingRight = 10;
             row.style.paddingTop = 6; row.style.paddingBottom = 6;
-            row.style.backgroundColor = selected ? new Color(GitForUnityTheme.Accent.r, GitForUnityTheme.Accent.g, GitForUnityTheme.Accent.b, 0.15f) : Color.clear;
+            row.style.backgroundColor = selected ? new Color(GitWaypointTheme.Accent.r, GitWaypointTheme.Accent.g, GitWaypointTheme.Accent.b, 0.15f) : Color.clear;
             Border(row, bottom: 1);
             row.RegisterCallback<MouseDownEvent>(_ => { selectedCommit = entry.CommitID; RefreshHistory(); });
 
             // graph node dot
             var dot = new VisualElement { style = { width = 8, height = 8, marginTop = 4, marginRight = 8, flexShrink = 0 } };
-            dot.style.backgroundColor = isHead ? GitForUnityTheme.Accent : GitForUnityTheme.Subdued;
-            GitForUnityTheme.Round(dot, 4);
+            dot.style.backgroundColor = isHead ? GitWaypointTheme.Accent : GitWaypointTheme.Subdued;
+            GitWaypointTheme.Round(dot, 4);
             row.Add(dot);
 
             var col = new VisualElement { style = { flexGrow = 1, flexDirection = FlexDirection.Column, overflow = Overflow.Hidden } };
@@ -1131,20 +1131,20 @@ namespace Unity.VersionControl.Git.UI
             titleRow.style.alignItems = Align.Center;
             // minWidth:0 lets the summary shrink below its content width so it ellipsizes instead of pushing
             // the ref pills off the row; the pills get flexShrink:0 so they always stay whole.
-            titleRow.Add(new Label(entry.summary) { style = { flexGrow = 1, flexShrink = 1, minWidth = 0, color = GitForUnityTheme.Text, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
+            titleRow.Add(new Label(entry.summary) { style = { flexGrow = 1, flexShrink = 1, minWidth = 0, color = GitWaypointTheme.Text, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
             if (isHead)
             {
-                var head = GitForUnityTheme.Chip("HEAD", GitForUnityTheme.Accent); head.style.marginLeft = 4; head.style.flexShrink = 0; titleRow.Add(head);
-                if (!string.IsNullOrEmpty(branchName)) { var bch = GitForUnityTheme.Chip(branchName, GitForUnityTheme.UpToDate); bch.style.marginLeft = 4; bch.style.flexShrink = 0; titleRow.Add(bch); }
+                var head = GitWaypointTheme.Chip("HEAD", GitWaypointTheme.Accent); head.style.marginLeft = 4; head.style.flexShrink = 0; titleRow.Add(head);
+                if (!string.IsNullOrEmpty(branchName)) { var bch = GitWaypointTheme.Chip(branchName, GitWaypointTheme.UpToDate); bch.style.marginLeft = 4; bch.style.flexShrink = 0; titleRow.Add(bch); }
             }
             col.Add(titleRow);
             // meta: avatar + author · time · hash
             var meta = Row();
             meta.style.alignItems = Align.Center;
             meta.style.marginTop = 2;
-            meta.Add(Avatar(entry.AuthorName, GitForUnityTheme.Accent, 16));
-            meta.Add(new Label(entry.AuthorName + " · " + entry.PrettyTimeString) { style = { color = GitForUnityTheme.Subdued, fontSize = 10, marginLeft = 5, flexShrink = 1, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis, whiteSpace = WhiteSpace.NoWrap } });
-            var hash = new Label(entry.ShortID); GitForUnityTheme.ApplyMono(hash); hash.style.fontSize = 10; hash.style.marginLeft = 8; hash.style.flexShrink = 0;
+            meta.Add(Avatar(entry.AuthorName, GitWaypointTheme.Accent, 16));
+            meta.Add(new Label(entry.AuthorName + " · " + entry.PrettyTimeString) { style = { color = GitWaypointTheme.Subdued, fontSize = 10, marginLeft = 5, flexShrink = 1, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis, whiteSpace = WhiteSpace.NoWrap } });
+            var hash = new Label(entry.ShortID); GitWaypointTheme.ApplyMono(hash); hash.style.fontSize = 10; hash.style.marginLeft = 8; hash.style.flexShrink = 0;
             meta.Add(hash);
             col.Add(meta);
             row.Add(col);
@@ -1155,10 +1155,10 @@ namespace Unity.VersionControl.Git.UI
         {
             historyDetail.Clear();
             historyDetail.style.display = DisplayStyle.Flex;
-            historyDetail.Add(new Label(entry.summary) { style = { color = GitForUnityTheme.Text, fontSize = 13, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.Normal, marginBottom = 4 } });
+            historyDetail.Add(new Label(entry.summary) { style = { color = GitWaypointTheme.Text, fontSize = 13, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.Normal, marginBottom = 4 } });
             if (!string.IsNullOrEmpty(entry.description))
-                historyDetail.Add(new Label(entry.description) { style = { color = GitForUnityTheme.Subdued, fontSize = 11, whiteSpace = WhiteSpace.Normal, marginBottom = 4 } });
-            historyDetail.Add(new Label(entry.AuthorName + " · " + entry.PrettyTimeString + " · " + (entry.changes != null ? entry.changes.Count : 0) + " files") { style = { color = GitForUnityTheme.Subdued, fontSize = 10, marginBottom = 8 } });
+                historyDetail.Add(new Label(entry.description) { style = { color = GitWaypointTheme.Subdued, fontSize = 11, whiteSpace = WhiteSpace.Normal, marginBottom = 4 } });
+            historyDetail.Add(new Label(entry.AuthorName + " · " + entry.PrettyTimeString + " · " + (entry.changes != null ? entry.changes.Count : 0) + " files") { style = { color = GitWaypointTheme.Subdued, fontSize = 10, marginBottom = 8 } });
 
             // Changed files, grouped by folder (the file tree the classic view had).
             if (entry.changes != null && entry.changes.Count > 0)
@@ -1171,7 +1171,7 @@ namespace Unity.VersionControl.Git.UI
                 foreach (var g in groups)
                 {
                     if (!string.IsNullOrEmpty(g.Key))
-                        files.Add(new Label("▸ " + g.Key) { style = { color = GitForUnityTheme.Subdued, fontSize = 11, paddingTop = 2, paddingBottom = 2 } });
+                        files.Add(new Label("▸ " + g.Key) { style = { color = GitWaypointTheme.Subdued, fontSize = 11, paddingTop = 2, paddingBottom = 2 } });
                     foreach (var c in g.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase))
                         files.Add(BuildCommitFileRow(c));
                 }
@@ -1215,12 +1215,12 @@ namespace Unity.VersionControl.Git.UI
             }
             else
             {
-                string letter; Color color; GitForUnityTheme.DiffBadge(c.Status, out letter, out color);
-                var badge = GitForUnityTheme.BadgeSquare(letter, color);
+                string letter; Color color; GitWaypointTheme.DiffBadge(c.Status, out letter, out color);
+                var badge = GitWaypointTheme.BadgeSquare(letter, color);
                 badge.style.width = 14; badge.style.height = 14; badge.style.marginRight = 4;
                 row.Add(badge);
             }
-            row.Add(new Label(sp.FileName) { style = { color = GitForUnityTheme.Text, fontSize = 11, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
+            row.Add(new Label(sp.FileName) { style = { color = GitWaypointTheme.Text, fontSize = 11, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
             return row;
         }
 
@@ -1247,7 +1247,7 @@ namespace Unity.VersionControl.Git.UI
             tab.Add(branchesList);
             branchesEmpty = new Label("No branches.")
             {
-                style = { flexGrow = 1, color = GitForUnityTheme.Subdued, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 24, paddingBottom = 24, display = DisplayStyle.None }
+                style = { flexGrow = 1, color = GitWaypointTheme.Subdued, unityTextAlign = TextAnchor.MiddleCenter, paddingTop = 24, paddingBottom = 24, display = DisplayStyle.None }
             };
             tab.Add(branchesEmpty);
             return tab;
@@ -1289,15 +1289,15 @@ namespace Unity.VersionControl.Git.UI
             row.style.paddingTop = 4; row.style.paddingBottom = 4;
             Border(row, bottom: 1);
 
-            var dot = new Label(isCurrent ? "●" : "○") { style = { color = isCurrent ? GitForUnityTheme.UpToDate : GitForUnityTheme.Subdued, fontSize = 11, marginRight = 6, width = 12 } };
+            var dot = new Label(isCurrent ? "●" : "○") { style = { color = isCurrent ? GitWaypointTheme.UpToDate : GitWaypointTheme.Subdued, fontSize = 11, marginRight = 6, width = 12 } };
             row.Add(dot);
-            var name = new Label(branch.Name) { style = { flexGrow = 1, color = isCurrent ? GitForUnityTheme.Text : GitForUnityTheme.Text, fontSize = 12, unityFontStyleAndWeight = isCurrent ? FontStyle.Bold : FontStyle.Normal, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } };
-            GitForUnityTheme.ApplyMono(name); name.style.color = GitForUnityTheme.Text;
+            var name = new Label(branch.Name) { style = { flexGrow = 1, color = isCurrent ? GitWaypointTheme.Text : GitWaypointTheme.Text, fontSize = 12, unityFontStyleAndWeight = isCurrent ? FontStyle.Bold : FontStyle.Normal, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } };
+            GitWaypointTheme.ApplyMono(name); name.style.color = GitWaypointTheme.Text;
             row.Add(name);
 
             if (isCurrent)
             {
-                var head = GitForUnityTheme.Chip("HEAD", GitForUnityTheme.Accent);
+                var head = GitWaypointTheme.Chip("HEAD", GitWaypointTheme.Accent);
                 head.style.marginLeft = 6; head.style.flexShrink = 0;
                 row.Add(head);
             }
@@ -1351,7 +1351,7 @@ namespace Unity.VersionControl.Git.UI
         VisualElement SectionHeader(string text)
         {
             var l = new Label(text.ToUpperInvariant());
-            l.style.color = GitForUnityTheme.Subdued; l.style.fontSize = 10;
+            l.style.color = GitWaypointTheme.Subdued; l.style.fontSize = 10;
             l.style.unityFontStyleAndWeight = FontStyle.Bold;
             l.style.paddingLeft = 10; l.style.paddingTop = 8; l.style.paddingBottom = 4;
             return l;
@@ -1390,8 +1390,8 @@ namespace Unity.VersionControl.Git.UI
             {
                 bool nameOk = !string.IsNullOrWhiteSpace(nameField.value);
                 bool emailOk = !string.IsNullOrWhiteSpace(emailField.value);
-                SetFieldBorder(nameField, nameOk ? GitForUnityTheme.FieldBorder : GitForUnityTheme.Conflict);
-                SetFieldBorder(emailField, emailOk ? GitForUnityTheme.FieldBorder : GitForUnityTheme.Conflict);
+                SetFieldBorder(nameField, nameOk ? GitWaypointTheme.FieldBorder : GitWaypointTheme.Conflict);
+                SetFieldBorder(emailField, emailOk ? GitWaypointTheme.FieldBorder : GitWaypointTheme.Conflict);
                 saveUser.SetEnabled(nameOk && emailOk);
             };
             nameField.RegisterValueChangedCallback(_ => validateUser());
@@ -1426,7 +1426,7 @@ namespace Unity.VersionControl.Git.UI
             repoCard.Add(FormField("Lock identity (read-only)", lockIdField));
             repoCard.Add(new Label("Who the server sees you as for file locks — used to tell your locks from teammates'. Learned automatically once you lock a file.")
             {
-                style = { color = GitForUnityTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 6 }
+                style = { color = GitWaypointTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 6 }
             });
 
             var setupRow = Row();
@@ -1453,7 +1453,7 @@ namespace Unity.VersionControl.Git.UI
             mergeBtn.tooltip = "Configures Git to use Unity's smart merge tool (UnityYAMLMerge) for scenes and prefabs, so merge conflicts in .unity/.prefab files resolve cleanly.";
             StyleButton(mergeBtn, false);
             repoCard.Add(new Label("Optional repository setup — hover each for details.")
-                { style = { color = GitForUnityTheme.Subdued, fontSize = 10, marginTop = 6 } });
+                { style = { color = GitWaypointTheme.Subdued, fontSize = 10, marginTop = 6 } });
             setupRow.style.marginTop = 4; setupRow.style.marginBottom = 6;
             setupRow.Add(gitattr); setupRow.Add(mergeBtn);
             repoCard.Add(setupRow);
@@ -1499,9 +1499,9 @@ namespace Unity.VersionControl.Git.UI
             lk.Add(SettingsRow("Lock on open", "What to do when you open a lockable file.", onOpen));
             lk.Add(SettingsRow("Release my locks on editor close", "Unlock your files automatically when you quit Unity.",
                 PlainToggle(LfsLocksModificationProcessor.ReleaseOnClose, v => LfsLocksModificationProcessor.ReleaseOnClose = v)));
-            lk.Add(new Label("Lockable files") { style = { color = GitForUnityTheme.Text, fontSize = 12, marginTop = 8 } });
+            lk.Add(new Label("Lockable files") { style = { color = GitWaypointTheme.Text, fontSize = 12, marginTop = 8 } });
             lk.Add(new Label("Which files are lockable is set by the `lockable` rules in your repository's .gitattributes - committed, so the whole team shares one policy. Edit .gitattributes to change it, or use \"Set up .gitattributes\" in the Repository section to install the recommended set.")
-                { style = { color = GitForUnityTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 8 } });
+                { style = { color = GitWaypointTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 8 } });
 
             // Project window
             var pw = SettingsCard("Project window", root);
@@ -1552,16 +1552,16 @@ namespace Unity.VersionControl.Git.UI
         VisualElement SettingsCard(string title, VisualElement parent)
         {
             var header = new Label(title.ToUpperInvariant());
-            header.style.color = GitForUnityTheme.Subdued; header.style.fontSize = 10; header.style.unityFontStyleAndWeight = FontStyle.Bold;
+            header.style.color = GitWaypointTheme.Subdued; header.style.fontSize = 10; header.style.unityFontStyleAndWeight = FontStyle.Bold;
             header.style.letterSpacing = 1; header.style.marginTop = 16; header.style.marginBottom = 6; header.style.marginLeft = 2;
             parent.Add(header);
             var card = new VisualElement();
-            card.style.backgroundColor = GitForUnityTheme.Panel;
-            GitForUnityTheme.Round(card, 8);
+            card.style.backgroundColor = GitWaypointTheme.Panel;
+            GitWaypointTheme.Round(card, 8);
             card.style.paddingLeft = 12; card.style.paddingRight = 12;
             card.style.paddingTop = 4; card.style.paddingBottom = 4;
             card.style.borderTopWidth = card.style.borderBottomWidth = card.style.borderLeftWidth = card.style.borderRightWidth = 1;
-            card.style.borderTopColor = card.style.borderBottomColor = card.style.borderLeftColor = card.style.borderRightColor = GitForUnityTheme.Border;
+            card.style.borderTopColor = card.style.borderBottomColor = card.style.borderLeftColor = card.style.borderRightColor = GitWaypointTheme.Border;
             parent.Add(card);
             return card;
         }
@@ -1571,7 +1571,7 @@ namespace Unity.VersionControl.Git.UI
         VisualElement FormField(string label, VisualElement field)
         {
             var col = new VisualElement { style = { flexDirection = FlexDirection.Column, marginTop = 4, marginBottom = 6 } };
-            col.Add(new Label(label) { style = { color = GitForUnityTheme.Subdued, fontSize = 10, marginBottom = 2 } });
+            col.Add(new Label(label) { style = { color = GitWaypointTheme.Subdued, fontSize = 10, marginBottom = 2 } });
             col.Add(field);
             return col;
         }
@@ -1585,11 +1585,11 @@ namespace Unity.VersionControl.Git.UI
             row.style.minHeight = 36;
             row.style.paddingTop = 5; row.style.paddingBottom = 5;
             row.style.borderBottomWidth = 1;
-            row.style.borderBottomColor = new Color(GitForUnityTheme.Border.r, GitForUnityTheme.Border.g, GitForUnityTheme.Border.b, 0.45f);
+            row.style.borderBottomColor = new Color(GitWaypointTheme.Border.r, GitWaypointTheme.Border.g, GitWaypointTheme.Border.b, 0.45f);
             var col = new VisualElement { style = { flexGrow = 1, flexShrink = 1, flexDirection = FlexDirection.Column, marginRight = 10 } };
-            col.Add(new Label(label) { style = { color = GitForUnityTheme.Text, fontSize = 12, whiteSpace = WhiteSpace.Normal } });
+            col.Add(new Label(label) { style = { color = GitWaypointTheme.Text, fontSize = 12, whiteSpace = WhiteSpace.Normal } });
             if (!string.IsNullOrEmpty(desc))
-                col.Add(new Label(desc) { style = { color = GitForUnityTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginTop = 1 } });
+                col.Add(new Label(desc) { style = { color = GitWaypointTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginTop = 1 } });
             row.Add(col);
             control.style.flexShrink = 0;
             row.Add(control);
@@ -1598,8 +1598,8 @@ namespace Unity.VersionControl.Git.UI
 
         VisualElement SettingsRowText(string label, string value)
         {
-            var v = new Label(value) { style = { color = GitForUnityTheme.Subdued, fontSize = 11, maxWidth = 210, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } };
-            GitForUnityTheme.ApplyMono(v);
+            var v = new Label(value) { style = { color = GitWaypointTheme.Subdued, fontSize = 11, maxWidth = 210, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } };
+            GitWaypointTheme.ApplyMono(v);
             return SettingsRow(label, v);
         }
 
@@ -1608,14 +1608,14 @@ namespace Unity.VersionControl.Git.UI
         {
             bool state = value;
             var track = new VisualElement { style = { width = 34, height = 18, flexShrink = 0 } };
-            GitForUnityTheme.Round(track, 9);
+            GitWaypointTheme.Round(track, 9);
             var knob = new VisualElement { style = { width = 14, height = 14, position = Position.Absolute, top = 2 } };
-            GitForUnityTheme.Round(knob, 7);
+            GitWaypointTheme.Round(knob, 7);
             knob.style.backgroundColor = Color.white;
             track.Add(knob);
             Action render = () =>
             {
-                track.style.backgroundColor = state ? GitForUnityTheme.Accent : GitForUnityTheme.Border;
+                track.style.backgroundColor = state ? GitWaypointTheme.Accent : GitWaypointTheme.Border;
                 knob.style.left = state ? 18 : 2;
             };
             render();
@@ -1641,10 +1641,10 @@ namespace Unity.VersionControl.Git.UI
         VisualElement PathHeader(string label, out Label versionLabel)
         {
             var row = Row(); row.style.alignItems = Align.Center; row.style.marginTop = 6;
-            row.Add(new Label(label) { style = { color = GitForUnityTheme.Text, fontSize = 12 } });
+            row.Add(new Label(label) { style = { color = GitWaypointTheme.Text, fontSize = 12 } });
             row.Add(Spacer());
-            versionLabel = new Label("") { style = { color = GitForUnityTheme.Subdued, fontSize = 11, flexShrink = 0 } };
-            GitForUnityTheme.ApplyMono(versionLabel);
+            versionLabel = new Label("") { style = { color = GitWaypointTheme.Subdued, fontSize = 11, flexShrink = 0 } };
+            GitWaypointTheme.ApplyMono(versionLabel);
             row.Add(versionLabel);
             return row;
         }
@@ -1903,7 +1903,7 @@ namespace Unity.VersionControl.Git.UI
             opStartTime = EditorApplication.timeSinceStartup;
             fetchButton.SetEnabled(false); pullButton.SetEnabled(false); pushButton.SetEnabled(false);
             // Top pill shows only the sync state; the operation message lives in the bottom strip.
-            syncLabel.text = "Syncing"; syncLabel.style.color = GitForUnityTheme.Accent;
+            syncLabel.text = "Syncing"; syncLabel.style.color = GitWaypointTheme.Accent;
             SetStatus(label + "…", Sev.Info);
         }
 
@@ -1932,7 +1932,7 @@ namespace Unity.VersionControl.Git.UI
             if (statusMessage == null) return;
             statusStamp = EditorApplication.timeSinceStartup;
             statusMessage.text = message;
-            statusMessage.style.color = sev == Sev.Info ? GitForUnityTheme.Subdued : GitForUnityTheme.Text;
+            statusMessage.style.color = sev == Sev.Info ? GitWaypointTheme.Subdued : GitWaypointTheme.Text;
             statusIcon.text = Glyph(sev);
             statusIcon.style.color = SevColor(sev);
             statusTime.text = "now";
@@ -1953,17 +1953,17 @@ namespace Unity.VersionControl.Git.UI
             var t = new VisualElement();
             t.style.flexDirection = FlexDirection.Row;
             t.style.minWidth = 200; t.style.maxWidth = 320; t.style.marginTop = 6;
-            t.style.backgroundColor = GitForUnityTheme.Elevated;
-            GitForUnityTheme.Round(t, 6);
+            t.style.backgroundColor = GitWaypointTheme.Elevated;
+            GitWaypointTheme.Round(t, 6);
             t.style.paddingTop = 8; t.style.paddingBottom = 8; t.style.paddingLeft = 10; t.style.paddingRight = 8;
             t.style.borderLeftWidth = 3; t.style.borderLeftColor = SevColor(sev);
             t.Add(new Label(Glyph(sev)) { style = { color = SevColor(sev), fontSize = 12, marginRight = 8, flexShrink = 0 } });
             var col = new VisualElement { style = { flexGrow = 1, flexDirection = FlexDirection.Column } };
-            col.Add(new Label(title) { style = { color = GitForUnityTheme.Text, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold } });
+            col.Add(new Label(title) { style = { color = GitWaypointTheme.Text, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold } });
             if (!string.IsNullOrEmpty(subtitle))
-                col.Add(new Label(subtitle) { style = { color = GitForUnityTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginTop = 1 } });
+                col.Add(new Label(subtitle) { style = { color = GitWaypointTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginTop = 1 } });
             t.Add(col);
-            var close = new Label("✕") { style = { color = GitForUnityTheme.Subdued, fontSize = 11, marginLeft = 8, flexShrink = 0 } };
+            var close = new Label("✕") { style = { color = GitWaypointTheme.Subdued, fontSize = 11, marginLeft = 8, flexShrink = 0 } };
             close.RegisterCallback<MouseDownEvent>(_ => t.RemoveFromHierarchy());
             t.Add(close);
             toastContainer.Add(t);
@@ -1978,7 +1978,7 @@ namespace Unity.VersionControl.Git.UI
 
         static Color SevColor(Sev sev)
         {
-            switch (sev) { case Sev.Ok: return GitForUnityTheme.UpToDate; case Sev.Warn: return GitForUnityTheme.Outdated; case Sev.Error: return GitForUnityTheme.Conflict; default: return GitForUnityTheme.Subdued; }
+            switch (sev) { case Sev.Ok: return GitWaypointTheme.UpToDate; case Sev.Warn: return GitWaypointTheme.Outdated; case Sev.Error: return GitWaypointTheme.Conflict; default: return GitWaypointTheme.Subdued; }
         }
 
         // ---- Per-file context actions --------------------------------------------------------------
@@ -2133,16 +2133,16 @@ namespace Unity.VersionControl.Git.UI
 
         static void StyleButton(Button b, bool primary)
         {
-            var bg = primary ? GitForUnityTheme.Accent : GitForUnityTheme.Elevated;
-            var hover = primary ? Lighten(GitForUnityTheme.Accent, 0.10f) : GitForUnityTheme.Hover;
+            var bg = primary ? GitWaypointTheme.Accent : GitWaypointTheme.Elevated;
+            var hover = primary ? Lighten(GitWaypointTheme.Accent, 0.10f) : GitWaypointTheme.Hover;
             b.style.height = 26;
             b.style.paddingLeft = 14; b.style.paddingRight = 14;
             b.style.paddingTop = 0; b.style.paddingBottom = 0;
-            b.style.color = primary ? Color.white : GitForUnityTheme.Text;
+            b.style.color = primary ? Color.white : GitWaypointTheme.Text;
             b.style.backgroundColor = bg;
             b.style.borderTopWidth = b.style.borderBottomWidth = b.style.borderLeftWidth = b.style.borderRightWidth = primary ? 0 : 1;
-            b.style.borderTopColor = b.style.borderBottomColor = b.style.borderLeftColor = b.style.borderRightColor = GitForUnityTheme.Border;
-            GitForUnityTheme.Round(b, 7);
+            b.style.borderTopColor = b.style.borderBottomColor = b.style.borderLeftColor = b.style.borderRightColor = GitWaypointTheme.Border;
+            GitWaypointTheme.Round(b, 7);
             b.RegisterCallback<MouseEnterEvent>(_ => { if (b.enabledSelf) b.style.backgroundColor = hover; });
             b.RegisterCallback<MouseLeaveEvent>(_ => b.style.backgroundColor = bg);
         }
@@ -2153,8 +2153,8 @@ namespace Unity.VersionControl.Git.UI
 
         static void Border(VisualElement e, int bottom = 0, int top = 0)
         {
-            if (bottom > 0) { e.style.borderBottomWidth = bottom; e.style.borderBottomColor = GitForUnityTheme.Border; }
-            if (top > 0) { e.style.borderTopWidth = top; e.style.borderTopColor = GitForUnityTheme.Border; }
+            if (bottom > 0) { e.style.borderBottomWidth = bottom; e.style.borderBottomColor = GitWaypointTheme.Border; }
+            if (top > 0) { e.style.borderTopWidth = top; e.style.borderTopColor = GitWaypointTheme.Border; }
         }
 
         static void SetPlaceholder(TextField field, string text)
@@ -2176,8 +2176,8 @@ namespace Unity.VersionControl.Git.UI
             // so (re)apply on attach to make styling reliable.
             field.RegisterCallback<AttachToPanelEvent>(_ => StyleFieldInput(field, minHeight));
             // Focus affordance: brighten the border while editing.
-            field.RegisterCallback<FocusInEvent>(_ => SetFieldBorder(field, GitForUnityTheme.Accent));
-            field.RegisterCallback<FocusOutEvent>(_ => SetFieldBorder(field, GitForUnityTheme.FieldBorder));
+            field.RegisterCallback<FocusInEvent>(_ => SetFieldBorder(field, GitWaypointTheme.Accent));
+            field.RegisterCallback<FocusOutEvent>(_ => SetFieldBorder(field, GitWaypointTheme.FieldBorder));
         }
 
         static void StyleFieldInput(TextField field, float minHeight)
@@ -2188,12 +2188,12 @@ namespace Unity.VersionControl.Git.UI
             input.style.minWidth = 0; // the input is itself a flex child; let it shrink so it never overflows
             input.style.paddingLeft = 8; input.style.paddingRight = 8;
             input.style.paddingTop = 4; input.style.paddingBottom = 4;
-            input.style.backgroundColor = GitForUnityTheme.Field;
-            input.style.color = GitForUnityTheme.Text;
+            input.style.backgroundColor = GitWaypointTheme.Field;
+            input.style.color = GitWaypointTheme.Text;
             // Clip long single-line values (e.g. a deep git path); multiline must stay scrollable.
             if (!field.multiline) input.style.overflow = Overflow.Hidden;
-            GitForUnityTheme.Round(input, 4);
-            SetFieldBorder(field, GitForUnityTheme.FieldBorder);
+            GitWaypointTheme.Round(input, 4);
+            SetFieldBorder(field, GitWaypointTheme.FieldBorder);
         }
 
         static void SetFieldBorder(TextField field, Color c)
