@@ -299,6 +299,8 @@ namespace Unity.VersionControl.Git.UI
             EditorApplication.projectWindowItemOnGUI += OnProjectWindowItemGUI;
             EditorApplication.update -= PruneStaleOptimistic;
             EditorApplication.update += PruneStaleOptimistic;
+            EditorApplication.update -= ApplyPendingUsername;
+            EditorApplication.update += ApplyPendingUsername;
 
             manager = theManager;
 
@@ -409,6 +411,7 @@ namespace Unity.VersionControl.Git.UI
                 lastLocksChangedEvent = cacheUpdateEvent;
                 locks = Repository.CurrentLocks;
                 OnLocksUpdate();
+                RefreshCurrentUsernameAsync(); // re-read identity so lock ownership reflects current lfs.lockUser
             }
         }
 
@@ -420,26 +423,67 @@ namespace Unity.VersionControl.Git.UI
             }
         }
 
-        private static void UpdateCurrentUsername()
+        // Resolve the LFS lock owner from `lfs.lockUser`, falling back to user.name (the keychain-based
+        // lookup is unfinished upstream). Pure: safe to call off the main thread once repoDir is captured.
+        private static string ResolveLockUser(string repoDir)
         {
-            var username = String.Empty;
-            if (Repository != null)
-            {
-                // The keychain-based lookup below is unfinished upstream. Resolve the LFS lock owner
-                // from `lfs.lockUser` (fall back to user.name) so "locked by me" works.
-                username = ReadGitConfig("lfs.lockUser");
-                if (string.IsNullOrEmpty(username))
-                    username = ReadGitConfig("user.name");
-            }
-
-            currentUsername = username ?? String.Empty;
+            var username = ReadGitConfig(repoDir, "lfs.lockUser");
+            if (string.IsNullOrEmpty(username))
+                username = ReadGitConfig(repoDir, "user.name");
+            return username ?? String.Empty;
         }
 
-        private static string ReadGitConfig(string key)
+        // Synchronous read at init (runs once, main thread).
+        private static void UpdateCurrentUsername()
+        {
+            currentUsername = Repository != null ? ResolveLockUser(RepoDir()) : String.Empty;
+        }
+
+        // The identity is read once at init, so changing `lfs.lockUser` later (or a real teammate's lock
+        // showing up) wouldn't be reflected until a domain reload. Re-read it whenever the lock set changes,
+        // off the main thread (git spawn), and apply on the main thread only if it actually changed - so
+        // "locked by me / by other" stays correct without a restart.
+        private static volatile string pendingUsername;
+        private static volatile bool hasPendingUsername;
+
+        private static void RefreshCurrentUsernameAsync()
+        {
+            if (Repository == null)
+                return;
+            string dir = RepoDir(); // capture on the main thread
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                var u = ResolveLockUser(dir);
+                pendingUsername = u;
+                hasPendingUsername = true; // set value before flag so the reader sees a consistent pair
+            });
+        }
+
+        private static void ApplyPendingUsername()
+        {
+            if (!hasPendingUsername)
+                return;
+            hasPendingUsername = false;
+            var u = pendingUsername ?? String.Empty;
+            if (!string.Equals(currentUsername, u, StringComparison.Ordinal))
+            {
+                currentUsername = u;
+                UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+            }
+        }
+
+        // The working-tree directory. Touches Application.dataPath, so MAIN THREAD ONLY - capture it before
+        // dispatching any background work.
+        private static string RepoDir()
+        {
+            return System.IO.Directory.GetParent(Application.dataPath).FullName;
+        }
+
+        // Pure git invocation (no Unity APIs), safe to call off the main thread.
+        private static string ReadGitConfig(string repoDir, string key)
         {
             try
             {
-                string repoDir = System.IO.Directory.GetParent(Application.dataPath).FullName;
                 var psi = new System.Diagnostics.ProcessStartInfo("git", "config --get " + key)
                 {
                     CreateNoWindow = true,
