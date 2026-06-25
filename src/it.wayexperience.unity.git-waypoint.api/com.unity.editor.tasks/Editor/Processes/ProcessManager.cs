@@ -40,6 +40,11 @@ namespace Unity.Editor.Tasks
 			processTask.OnEndProcess += p => {
 				if (processes.Contains(p))
 					processes.Remove(p);
+				// By the time this fires the process has exited and its output is already captured into the
+				// task's result, and Wrapper.ExitCode/ProcessId are stored values - so the wrapper (with its
+				// native process handle, pipes, cts and events) is done. Dispose it now instead of leaking it
+				// until GC every poll; the task object itself stays alive for its result continuations.
+				(p as IProcessTask)?.Wrapper?.Dispose();
 			};
 			return processTask;
 		}
@@ -59,7 +64,18 @@ namespace Unity.Editor.Tasks
 			};
 
 			startInfo.FileName = processTask.ProcessName.ToSPath().ToString();
-			startInfo.Arguments = processTask.ProcessArguments;
+			// Prefer the discrete argument list when a task provides one (each entry is passed to the process
+			// verbatim, so paths with spaces/quotes/option-looking names can't break parsing); otherwise fall
+			// back to the single argument string. Setting both would throw, so it's strictly one or the other.
+			if (processTask.ProcessArgumentList != null)
+			{
+				foreach (var a in processTask.ProcessArgumentList)
+					startInfo.ArgumentList.Add(a);
+			}
+			else
+			{
+				startInfo.Arguments = processTask.ProcessArguments;
+			}
 			startInfo.WorkingDirectory = workingDirectory;
 
 			return Configure(processTask, startInfo);

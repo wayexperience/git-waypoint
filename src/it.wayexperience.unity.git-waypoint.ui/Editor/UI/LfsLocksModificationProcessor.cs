@@ -221,7 +221,7 @@ namespace Unity.VersionControl.Git.UI
             Task.Run(() =>
             {
                 string o, e;
-                bool tracked = RunGit("ls-files --error-unmatch -- \"" + assetPath + "\"", workingDir, out o, out e) == 0;
+                bool tracked = RunGit(new[] { "ls-files", "--error-unmatch", "--", assetPath }, workingDir, out o, out e) == 0;
                 // Lockability is decided ONLY by the `lockable` rules in .gitattributes (committed, shared by
                 // the whole team) - not a per-user list - so everyone locks the same files.
                 bool lockable = tracked && CheckAttrLockable(assetPath, workingDir);
@@ -268,15 +268,18 @@ namespace Unity.VersionControl.Git.UI
         // Returns true if this file can be edited by this user
         public static bool IsOpenForEdit(string assetPath, out string message)
         {
+            // A .meta and its asset travel together: a lock on the BASE asset must also block editing the
+            // .meta. Resolve the base path (real suffix strip - TrimEnd takes a char SET, so ".meta" would
+            // eat any trailing '.','m','e','t','a') and check the lock on the path itself AND its base.
+            string basePath = assetPath.EndsWith(".meta")
+                ? assetPath.Substring(0, assetPath.Length - ".meta".Length)
+                : assetPath;
+
             var lck = GetLock(assetPath);
-            bool canEdit = true;
-            if (assetPath.EndsWith(".meta"))
-            {
-                canEdit &= !IsLockedBySomeoneElse(lck);
-                assetPath = assetPath.TrimEnd(".meta");
-            }
-            canEdit &= !IsLockedBySomeoneElse(lck);
-            if (!canEdit)
+            if (!IsLockedBySomeoneElse(lck) && basePath != assetPath)
+                lck = GetLock(basePath);
+
+            if (IsLockedBySomeoneElse(lck))
             {
                 message = string.Format("File is locked for editing by {0}", lck.Value.Owner.Name);
                 return false;
@@ -284,7 +287,7 @@ namespace Unity.VersionControl.Git.UI
 
             // Optionally keep outdated files read-only until pulled, so you don't edit something that's
             // about to change on the server (which would just create a conflict).
-            if (ApplicationConfiguration.BlockOutdatedEdit && IsOutdatedAsset(assetPath))
+            if (ApplicationConfiguration.BlockOutdatedEdit && IsOutdatedAsset(basePath))
             {
                 message = "This file is outdated — a newer version is on the server. Pull before editing.";
                 return false;
@@ -309,7 +312,7 @@ namespace Unity.VersionControl.Git.UI
             // On quit the repository's async tasks won't complete, so use plain git directly.
             string dir = RepoDir();
             string branch, e;
-            if (RunGit("rev-parse --abbrev-ref HEAD", dir, out branch, out e) != 0)
+            if (RunGit(new[] { "rev-parse", "--abbrev-ref", "HEAD" }, dir, out branch, out e) != 0)
                 return;
             branch = branch.Trim();
 
@@ -321,13 +324,13 @@ namespace Unity.VersionControl.Git.UI
 
                 string path = lck.Path.ToString();
                 string status, diff, uo;
-                RunGit("status --porcelain -- \"" + path + "\"", dir, out status, out e);
+                RunGit(new[] { "status", "--porcelain", "--", path }, dir, out status, out e);
                 if (!string.IsNullOrWhiteSpace(status))
                     continue;
-                if (RunGit("diff --quiet origin/" + branch + " -- \"" + path + "\"", dir, out diff, out e) != 0)
+                if (RunGit(new[] { "diff", "--quiet", "origin/" + branch, "--", path }, dir, out diff, out e) != 0)
                     continue;
 
-                RunGit("lfs unlock \"" + path + "\"", dir, out uo, out e);
+                RunGit(new[] { "lfs", "unlock", path }, dir, out uo, out e);
             }
         }
 
@@ -342,7 +345,7 @@ namespace Unity.VersionControl.Git.UI
 
             string dir = RepoDir();
             string branch, e;
-            if (RunGit("rev-parse --abbrev-ref HEAD", dir, out branch, out e) != 0)
+            if (RunGit(new[] { "rev-parse", "--abbrev-ref", "HEAD" }, dir, out branch, out e) != 0)
                 return;
             branch = branch.Trim();
 
@@ -357,10 +360,10 @@ namespace Unity.VersionControl.Git.UI
                     continue;
 
                 string status, diff;
-                RunGit("status --porcelain -- \"" + path + "\"", dir, out status, out e);
+                RunGit(new[] { "status", "--porcelain", "--", path }, dir, out status, out e);
                 if (!string.IsNullOrWhiteSpace(status))
                     continue;
-                if (RunGit("diff --quiet origin/" + branch + " -- \"" + path + "\"", dir, out diff, out e) != 0)
+                if (RunGit(new[] { "diff", "--quiet", "origin/" + branch, "--", path }, dir, out diff, out e) != 0)
                     continue;
 
                 // Release through the repository so the lock cache and project icons refresh. We have the
@@ -399,7 +402,7 @@ namespace Unity.VersionControl.Git.UI
             {
                 string o, e;
                 var paths = new List<string>();
-                if (RunGit("-c core.quotepath=false diff --name-only HEAD...@{u}", dir, out o, out e) == 0 && !string.IsNullOrEmpty(o))
+                if (RunGit(new[] { "-c", "core.quotepath=false", "diff", "--name-only", "HEAD...@{u}" }, dir, out o, out e) == 0 && !string.IsNullOrEmpty(o))
                 {
                     foreach (var line in o.Split('\n'))
                     {
@@ -439,7 +442,7 @@ namespace Unity.VersionControl.Git.UI
         private static bool CheckAttrLockable(string assetPath, string workingDir)
         {
             string o, e;
-            if (RunGit("check-attr lockable -- \"" + assetPath + "\"", workingDir, out o, out e) == 0 && !string.IsNullOrEmpty(o))
+            if (RunGit(new[] { "check-attr", "lockable", "--", assetPath }, workingDir, out o, out e) == 0 && !string.IsNullOrEmpty(o))
                 return o.TrimEnd().EndsWith(": set", System.StringComparison.OrdinalIgnoreCase);
             return false;
         }
@@ -459,17 +462,20 @@ namespace Unity.VersionControl.Git.UI
         private static string RunGitConfig(string key)
         {
             string o, e;
-            return RunGit("config --get " + key, RepoDir(), out o, out e) == 0 ? (string.IsNullOrEmpty(o) ? null : o.Trim()) : null;
+            return RunGit(new[] { "config", "--get", key }, RepoDir(), out o, out e) == 0 ? (string.IsNullOrEmpty(o) ? null : o.Trim()) : null;
         }
 
-        // Plain git invocation, safe off the main thread. Prepends Homebrew paths so git/git-lfs
-        // resolve even when Unity is launched from Finder/Hub with a minimal PATH.
-        private static int RunGit(string arguments, string workingDir, out string stdout, out string stderr)
+        // Plain git invocation, safe off the main thread. Args are passed as discrete, unparsed entries
+        // (ArgumentList) so paths with spaces/quotes/option-looking names can't break parsing - no manual
+        // quoting. Prepends Homebrew paths so git/git-lfs resolve even when Unity is launched from
+        // Finder/Hub with a minimal PATH.
+        private static int RunGit(string[] args, string workingDir, out string stdout, out string stderr)
         {
             using (var p = new System.Diagnostics.Process())
             {
                 p.StartInfo.FileName = "git";
-                p.StartInfo.Arguments = arguments;
+                foreach (var a in args)
+                    p.StartInfo.ArgumentList.Add(a);
                 p.StartInfo.WorkingDirectory = workingDir;
                 p.StartInfo.CreateNoWindow = true;
                 p.StartInfo.UseShellExecute = false;

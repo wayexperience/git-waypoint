@@ -56,6 +56,13 @@ namespace Unity.Editor.Tasks
 		/// </summary>
 		string ProcessArguments { get; }
 		/// <summary>
+		/// When non-null, the process is launched with these arguments as discrete, unparsed entries
+		/// (ProcessStartInfo.ArgumentList) instead of the single <see cref="ProcessArguments"/> string -
+		/// so paths with spaces/quotes/option-looking names can't break argument parsing. Null = use the
+		/// string form (the default for every task that doesn't opt in).
+		/// </summary>
+		IReadOnlyList<string> ProcessArgumentList { get; }
+		/// <summary>
 		/// The underlying process object.
 		/// </summary>
 		BaseProcessWrapper Wrapper { get; }
@@ -383,6 +390,8 @@ namespace Unity.Editor.Tasks
 		public virtual string ProcessName { get; protected set; }
 		/// <inheritdoc />
 		public virtual string ProcessArguments { get; protected set; }
+		/// <inheritdoc />
+		public virtual IReadOnlyList<string> ProcessArgumentList { get; protected set; }
 
 		/// <inheritdoc />
 		protected IOutputProcessor<T> OutputProcessor { get; set; }
@@ -597,6 +606,8 @@ namespace Unity.Editor.Tasks
 		public virtual string ProcessName { get; protected set; }
 		/// <inheritdoc />
 		public virtual string ProcessArguments { get; protected set; }
+		/// <inheritdoc />
+		public virtual IReadOnlyList<string> ProcessArgumentList { get; protected set; }
 		/// <inheritdoc />
 		protected IOutputProcessor<T, List<T>> OutputProcessor { get; set; }
 	}

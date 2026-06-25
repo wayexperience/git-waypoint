@@ -299,6 +299,10 @@ namespace Unity.Editor.Tasks
 			{
 				if (!waitSucceeded)
 				{
+					// NOTE: only the direct process is killed - Unity's Mono has no Process.Kill(entireProcessTree)
+					// overload, so a git child's git-lfs/ssh grandchild isn't reaped here. The acute orphan source
+					// (ssh ControlMaster from git-lfs SSH multiplexing) is instead prevented at the root by setting
+					// lfs.ssh.automultiplex=false per repo (see ProjectWindowInterface.EnsureLfsSshConfigOnce).
 					Process.Kill();
 					waitSucceeded = Process.WaitForExit(100);
 				}
@@ -329,12 +333,14 @@ namespace Unity.Editor.Tasks
 			public Process process;
 			public ProcessStartInfo startInfo;
 			public StreamWriter input;
-			public ManualResetEventSlim done;
 		}
 
 		private static void Cleanup(ProcessWrapper wrapper)
 		{
-			var done = new ManualResetEventSlim(false);
+			// Offload the potentially-blocking stream/process teardown to a threadpool thread. Fire-and-forget:
+			// nothing needs to wait for it. (The old version handed in a ManualResetEventSlim and did
+			// done.Wait(200), but the worker never Set() it - so it stalled every dispose for 200ms AND leaked
+			// the event. Dropping the handshake fixes both.)
 			ThreadPool.QueueUserWorkItem(s => {
 				var data = (CleanupData)s;
 
@@ -353,10 +359,9 @@ namespace Unity.Editor.Tasks
 				catch { }
 
 				data.input?.Dispose();
-				data.process.Dispose();
+				try { data.process.Dispose(); } catch { }
 
-			}, new CleanupData { done = done, input = wrapper.Input, process = wrapper.Process, startInfo = wrapper.StartInfo });
-			done.Wait(200);
+			}, new CleanupData { input = wrapper.Input, process = wrapper.Process, startInfo = wrapper.StartInfo });
 		}
 
 		private bool disposed;
@@ -371,6 +376,8 @@ namespace Unity.Editor.Tasks
 				if (StartInfo.RedirectStandardOutput)
 					Process.OutputDataReceived -= OnOutputDataReceived;
 				stopEvent.Dispose();
+				cts.Dispose();
+				gotOutput?.Dispose();
 				Cleanup(this);
 				disposed = true;
 			}
