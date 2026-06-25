@@ -6,7 +6,7 @@ namespace Unity.VersionControl.Git.UI
     // Design tokens for the Git for Unity UI Toolkit window, taken straight from the design mockups so every
     // tab stays visually consistent. Colours are the exact hexes from the foundation sheet; a couple of
     // helpers build the reusable bits (status badge, chip) the same way everywhere.
-    static class GitForUnityTheme
+    static class GitWaypointTheme
     {
         // Surfaces
         public static readonly Color Window   = Hex(0x0E0E10);

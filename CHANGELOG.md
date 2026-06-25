@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.1.17] - 2026-06-25
+- Internal rename to Git Waypoint: GitForUnityWindow/Theme -> GitWaypointWindow/Theme, folder and solution renamed (no behavior change)
+
 ## [0.1.16] - 2026-06-25
 - Rename app folders to Git Waypoint: logs now in ~/Library/Logs/GitWaypoint/git-waypoint.log and cache in ~/Library/Application Support/GitWaypoint
 

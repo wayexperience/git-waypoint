@@ -354,15 +354,15 @@ namespace Unity.VersionControl.Git.UI
             if (status != GitFileStatus.Unmerged)
             {
                 if (IsOutdated(guid))
-                    return new StatusBadge { HasValue = true, Color = GitForUnityTheme.Outdated, Letter = "↓" };
+                    return new StatusBadge { HasValue = true, Color = GitWaypointTheme.Outdated, Letter = "↓" };
                 if (isLocked)
                 {
-                    var col = IsGuidLockedByMe(guid) ? GitForUnityTheme.UpToDate : GitForUnityTheme.Conflict;
+                    var col = IsGuidLockedByMe(guid) ? GitWaypointTheme.UpToDate : GitWaypointTheme.Conflict;
                     return new StatusBadge { HasValue = true, Color = col, Glyph = Utility.GetIcon("lock-light") };
                 }
             }
 
-            GitForUnityTheme.DiffBadge(status, out string letter, out Color color);
+            GitWaypointTheme.DiffBadge(status, out string letter, out Color color);
             return new StatusBadge { HasValue = true, Letter = letter, Color = color };
         }
 
@@ -371,7 +371,7 @@ namespace Unity.VersionControl.Git.UI
         {
             if (!badge.HasValue)
                 return;
-            GitForUnityTheme.DrawSquareBadge(rect, badge.Color, badge.Letter, badge.Glyph);
+            GitWaypointTheme.DrawSquareBadge(rect, badge.Color, badge.Letter, badge.Glyph);
         }
 
         private static bool EnsureInitialized()
