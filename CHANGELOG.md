@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.1.13] - 2026-06-25
+- History: keep ref pills (HEAD/branch) whole and ellipsize the commit summary when space is tight
+
 ## [0.1.12] - 2026-06-25
 - Fix file-descriptor leak: drain stderr and kill timed-out git children; stop re-running 'lfs locks --verify' once identity is confirmed
 
