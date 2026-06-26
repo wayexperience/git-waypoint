@@ -916,14 +916,6 @@ namespace Unity.VersionControl.Git.UI
             }
         }
 
-        public static Texture2D BigLogo
-        {
-            get
-            {
-                return Utility.GetIcon(GetIconName("big-logo"));
-            }
-        }
-
         public static Texture2D MergeIcon
         {
             get
