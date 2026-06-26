@@ -74,6 +74,9 @@ namespace IntegrationTests
         {
             using (var test = StartTest(TestData.TestRepoMasterCleanSynchronized))
             {
+                var cleanDirectory = "clean-dir".ToSPath().EnsureDirectoryExists();
+                cleanDirectory.Combine("file.txt").WriteAllText("Some test text.");
+
                 foreach (var file in m_CleanFiles)
                 {
                     file.ToSPath().WriteAllText("Some test text.");
@@ -84,6 +87,7 @@ namespace IntegrationTests
                 m_CleanFiles[0].ToSPath().Exists().Should().BeFalse();
                 m_CleanFiles[1].ToSPath().Exists().Should().BeFalse();
                 m_CleanFiles[2].ToSPath().Exists().Should().BeFalse();
+                cleanDirectory.DirectoryExists().Should().BeFalse();
             }
         }
 
