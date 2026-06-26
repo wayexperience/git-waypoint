@@ -12,8 +12,9 @@ One command:
 
 1. Bumps the three `src/.../package.json` (combined, api, ui) and the `FallbackVersion` in `ApplicationInfo.cs`.
 2. Prepends an entry to `CHANGELOG.md`.
-3. Commits the source.
+3. Commits the source and pushes it to `main`.
 4. Builds the unified package and pushes it to the `upm` branch (mirrors the `ui/Editor/` and `api/Api/` trees, bumps the package version, copies the changelog).
+5. Tags the release `v<version>` and cuts a GitHub Release (via `gh`) with the changelog note.
 
 Then, to update a test project that installs `…git-waypoint.git#upm`: in Unity open **Package Manager → Git Waypoint → Refresh** (or restart). Do **not** hand-edit `packages-lock.json`.
 
@@ -21,3 +22,4 @@ Then, to update a test project that installs `…git-waypoint.git#upm`: in Unity
 - Commits use `commit.gpgsign=false` (1Password SSH signing fails in non-interactive shells).
 - The real runtime version comes from `package.json` via `PackageInfo.FindForAssembly`; `FallbackVersion` is only a last resort (e.g. if the Package Manager isn't ready yet), but `release.sh` bumps it anyway so it's never stale.
 - The unified `upm` package is a flattened build artifact; `release.sh` mirrors only the source trees, so for code-only releases it matches what the full packaging pipeline would produce.
+- The GitHub Release step needs the `gh` CLI authenticated; if `gh` is missing the tag is still pushed and the script prints the `gh release create` command to run by hand.

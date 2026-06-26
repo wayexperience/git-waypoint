@@ -4,8 +4,9 @@
 #   ./release.sh <version> "<changelog summary>"
 #   ./release.sh 0.1.12 "Fix file-descriptor leak in git lock polling"
 #
-# It bumps every version that must move, records a CHANGELOG entry, commits the source, then builds and
-# pushes the unified package to the `upm` branch (what users install). No manual sed, no touching
+# It bumps every version that must move, records a CHANGELOG entry, commits + pushes the source to main,
+# builds and pushes the unified package to the `upm` branch (what users install), then tags the release
+# (v<version>) and cuts a GitHub Release with the changelog note. No manual sed, no touching
 # packages-lock.json. After it runs: in Unity, Package Manager -> Refresh to pull the new version.
 #
 # Versions kept in sync (this is the "what to update each release" list):
@@ -54,7 +55,8 @@ awk -v ver="$VER" -v date="$DATE" -v note="$NOTE" '
 # 3) commit the source
 git add -A src CHANGELOG.md
 git -c commit.gpgsign=false commit -q -m "$VER: $NOTE"
-echo ">> committed source"
+git push origin main
+echo ">> committed + pushed source to main"
 
 # 4) build + push the unified upm package
 WT="$(mktemp -d)/upm"
@@ -96,6 +98,18 @@ HASH=$(git -C "$WT" rev-parse HEAD)
 git worktree remove "$WT" --force
 git worktree prune
 
+# 5) tag the source commit and cut a GitHub Release with the changelog note
+TAG="v$VER"
+git -c commit.gpgsign=false tag -a "$TAG" -m "$VER: $NOTE"
+git push origin "$TAG"
+if command -v gh >/dev/null 2>&1; then
+  gh release create "$TAG" --title "Git Waypoint $VER" --notes "$NOTE"
+  echo ">> GitHub Release $TAG created"
+else
+  echo ">> gh CLI not found - tag $TAG pushed, but GitHub Release skipped." >&2
+  echo "   To create it: gh release create $TAG --title \"Git Waypoint $VER\" --notes \"$NOTE\"" >&2
+fi
+
 echo ""
-echo ">> Published $VER  (upm $HASH)"
+echo ">> Published $VER  (upm $HASH, tag $TAG)"
 echo ">> In Unity: Package Manager -> Git Waypoint -> Refresh to update test projects."
