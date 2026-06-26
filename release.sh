@@ -41,6 +41,9 @@ for p in src/it.wayexperience.unity.git-waypoint src/it.wayexperience.unity.git-
 done
 "${SED[@]}" "s/FallbackVersion = \"[^\"]*\"/FallbackVersion = \"$VER\"/" \
   src/it.wayexperience.unity.git-waypoint.api/Api/Application/ApplicationInfo.cs
+# keep the ui -> api internal dependency pinned to the release version (the version sed above doesn't touch it)
+"${SED[@]}" "s#\(\"it.wayexperience.unity.git-waypoint.api\": \"\)[^\"]*\"#\1$VER\"#" \
+  src/it.wayexperience.unity.git-waypoint.ui/package.json
 
 # 2) prepend a CHANGELOG entry under the header
 DATE=$(date +%Y-%m-%d)

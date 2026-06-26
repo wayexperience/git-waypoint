@@ -25,12 +25,13 @@ On a machine with no Git installed, the first run downloads a portable Git + Git
 - The bundled Git/LFS install automatically; the detected versions show next to the paths in Settings.
 
 ### For maintainers
-The `#upm` branch is a generated snapshot of the unified package. To cut a new one:
+The `#upm` branch is a generated snapshot of the unified package. Cut a new release with:
 
 ```
-packaging/make-unified-package.sh      # assembles build/upm-unified/it.wayexperience.unity.git-waypoint
-packaging/publish-unified-package.sh   # force-pushes it to the orphan `upm` branch
+./release.sh <version> "<changelog summary>"
 ```
+
+It bumps the versions, updates the changelog, pushes `main`, mirrors the package to the `upm` branch, then tags `v<version>` and creates a GitHub Release. See [RELEASING.md](RELEASING.md) for details.
 
 ## What's all this then?
 
