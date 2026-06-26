@@ -85,7 +85,7 @@ Huge thanks to their authors and contributors. Git Waypoint inherits and builds 
 
 ## License
 
-**[MIT](LICENSE)**
+**[MIT](LICENSE.md)**
 
 Copyright 2026 WAY Experience
 
