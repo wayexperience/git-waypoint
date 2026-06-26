@@ -9,7 +9,8 @@ namespace Unity.VersionControl.Git.UI
 
     public class FileHistoryWindow : BaseWindow
     {
-        [MenuItem("Assets/Git/History", false)]
+        // Hidden until the per-file history is rebuilt natively: the legacy IMGUI window is non-functional.
+        // [MenuItem("Assets/Git/History", false)]
         private static void GitFileHistory()
         {
             if (Selection.assetGUIDs != null)
@@ -26,7 +27,7 @@ namespace Unity.VersionControl.Git.UI
             }
         }
 
-        [MenuItem("Assets/Git/History", true)]
+        // [MenuItem("Assets/Git/History", true)]
         private static bool GitFileHistoryValidation()
         {
             return Selection.assetGUIDs != null && Selection.assetGUIDs.Length > 0;
