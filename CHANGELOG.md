@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.0] - 2026-06-26
+- Pulizia pre-rilascio: attribuzione licenze (WAY Experience, Andreia Gaita) e notice terze parti complete, rimozione logo Unity, manifest e versioni allineati, menu File History legacy nascosto
+
 ## [0.1.21] - 2026-06-26
 - Fix file .meta orfano (package.json del framework) che generava errori 'asset can't be found' nel Package Manager
 
