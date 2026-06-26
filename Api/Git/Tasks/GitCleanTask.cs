@@ -34,7 +34,7 @@ namespace Unity.VersionControl.Git.Tasks
             : base(platform, null, outputProcessor: new StringOutputProcessor(), token: token)
         {
             arguments = "clean ";
-            arguments += "-f";
+            arguments += "-fd";
         }
 
         public override string ProcessArguments => arguments;

@@ -152,6 +152,7 @@ namespace Unity.VersionControl.Git
         public ITask ReleaseLock(SPath file, bool force) => repositoryManager.UnlockFile(file, force);
         public ITask ReleaseLock(SPath file, string id, bool force) => repositoryManager.UnlockFile(file, id, force);
         public ITask DiscardChanges(GitStatusEntry[] gitStatusEntry) => repositoryManager.DiscardChanges(gitStatusEntry);
+        public ITask DiscardAllChanges() => repositoryManager.DiscardAllChanges();
         public ITask CheckoutVersion(string changeset, IList<string> files) => repositoryManager.CheckoutVersion(changeset, files);
         public ITask RemoteAdd(string remote, string url) => repositoryManager.RemoteAdd(remote, url);
         public ITask RemoteRemove(string remote) => repositoryManager.RemoteRemove(remote);

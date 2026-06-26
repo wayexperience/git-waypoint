@@ -27,6 +27,7 @@ namespace Unity.VersionControl.Git
         ITask ReleaseLock(SPath file, bool force);
         ITask ReleaseLock(SPath file, string id, bool force);
         ITask DiscardChanges(GitStatusEntry[] discardEntries);
+        ITask DiscardAllChanges();
         ITask CheckoutVersion(string changeset, IList<string> files);
 
         /// <summary>

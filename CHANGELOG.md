@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.1] - 2026-06-26
+- Nuovo pulsante «Discard all» nella tab Changes: annulla tutte le modifiche locali (git reset --hard più git clean -fd, incluse le directory non tracciate) previa conferma distruttiva, rilascia i lock LFS posseduti sui file modificati e aggiorna AssetDatabase, stato Git e lock
+
 ## [0.2.0] - 2026-06-26
 - Pulizia pre-rilascio: attribuzione licenze (WAY Experience, Andreia Gaita) e notice terze parti complete, rimozione logo Unity, manifest e versioni allineati, menu File History legacy nascosto
 

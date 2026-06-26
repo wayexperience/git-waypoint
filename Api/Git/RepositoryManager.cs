@@ -43,6 +43,7 @@ namespace Unity.VersionControl.Git
         ITask UnlockFile(SPath file, bool force);
         ITask UnlockFile(SPath file, string id, bool force);
         ITask DiscardChanges(GitStatusEntry[] gitStatusEntries);
+        ITask DiscardAllChanges();
         ITask CheckoutVersion(string changeset, IList<string> files);
         ITask UpdateGitLog();
         ITask UpdateGitStatus();
@@ -372,6 +373,14 @@ namespace Unity.VersionControl.Git
                 task = deleteTask.Then(() => DataNeedsRefreshing?.Invoke(CacheType.GitStatus));
             }
 
+            return HookupHandlers(task, true);
+        }
+
+        public ITask DiscardAllChanges()
+        {
+            var task = GitClient.Reset("HEAD", GitResetMode.Hard)
+                                .Then(GitClient.CleanAll())
+                                .Then(() => DataNeedsRefreshing?.Invoke(CacheType.GitStatus));
             return HookupHandlers(task, true);
         }
 

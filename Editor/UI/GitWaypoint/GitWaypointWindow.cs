@@ -46,7 +46,7 @@ namespace Unity.VersionControl.Git.UI
         ScrollView changesList;
         Label emptyLabel, changesCount;
         TextField searchField, commitMessage, commitDescription;
-        Button commitButton, commitPushButton;
+        Button commitButton, commitPushButton, discardAllButton;
         Toggle selectAllToggle;
         VisualElement changesSelRow;
         VisualElement outdatedBanner;
@@ -514,6 +514,10 @@ namespace Unity.VersionControl.Git.UI
             changesSelRow.Add(Spacer());
             changesCount = new Label("") { style = { color = GitWaypointTheme.Subdued, fontSize = 11 } };
             changesSelRow.Add(changesCount);
+            discardAllButton = new Button(DiscardAllChanges) { text = "Discard all" };
+            StyleDangerButton(discardAllButton);
+            discardAllButton.style.marginLeft = 8;
+            changesSelRow.Add(discardAllButton);
             tab.Add(changesSelRow);
 
             outdatedBanner = new VisualElement();
@@ -678,6 +682,7 @@ namespace Unity.VersionControl.Git.UI
                 emptyLabel.style.display = DisplayStyle.Flex;
                 changesList.style.display = DisplayStyle.None;
                 changesCount.text = "";
+                if (discardAllButton != null) discardAllButton.SetEnabled(false);
                 outdatedBanner.style.display = DisplayStyle.None;
                 UpdateCommitEnabled();
                 return;
@@ -724,6 +729,7 @@ namespace Unity.VersionControl.Git.UI
             emptyLabel.style.display = any ? DisplayStyle.None : DisplayStyle.Flex;
             changesList.style.display = any ? DisplayStyle.Flex : DisplayStyle.None;
             changesCount.text = changes.Count == 0 ? "" : changes.Count + " changed" + (outdatedCount > 0 ? " · " + outdatedCount + " outdated" : "");
+            if (discardAllButton != null) discardAllButton.SetEnabled(changes.Count > 0 && runningOp == null && !isBusy);
 
             if (outdatedCount > 0)
             {
@@ -1897,13 +1903,15 @@ namespace Unity.VersionControl.Git.UI
             }).Start();
         }
 
-        void BeginOp(string label)
+        void BeginOp(string label, bool syncState = true)
         {
             runningOp = label;
             opStartTime = EditorApplication.timeSinceStartup;
             fetchButton.SetEnabled(false); pullButton.SetEnabled(false); pushButton.SetEnabled(false);
-            // Top pill shows only the sync state; the operation message lives in the bottom strip.
-            syncLabel.text = "Syncing"; syncLabel.style.color = GitWaypointTheme.Accent;
+            if (discardAllButton != null) discardAllButton.SetEnabled(false);
+            // Remote operations use the sync pill; local-only cleanup shows its own label there.
+            syncLabel.text = syncState ? "Syncing" : label;
+            syncLabel.style.color = GitWaypointTheme.Accent;
             SetStatus(label + "…", Sev.Info);
         }
 
@@ -2019,6 +2027,51 @@ namespace Unity.VersionControl.Git.UI
                         if (l.Path == p && l.Owner.Name == me) { repo.ReleaseLock(p, l.ID, false).Start(); break; }
                 }
                 repo.Refresh(CacheType.GitStatus); repo.Refresh(CacheType.GitLocks); needsRebuild = true;
+            }).Start();
+        }
+
+        void DiscardAllChanges()
+        {
+            var repo = Repository; if (repo == null || runningOp != null || isBusy) return;
+            var dirtyEntries = (repo.CurrentChanges ?? new List<GitStatusEntry>())
+                .Where(x => x.Status != GitFileStatus.Ignored)
+                .ToList();
+            if (dirtyEntries.Count == 0)
+            {
+                SetStatus("No changes to discard", Sev.Info);
+                return;
+            }
+
+            var message = dirtyEntries.Count == 1
+                ? "Remove the uncommitted change and any new files?\nThis cannot be undone."
+                : "Remove all " + dirtyEntries.Count + " uncommitted changes and any new files?\nThis cannot be undone.";
+            if (!EditorUtility.DisplayDialog("Discard all changes", message, "Discard all", "Cancel"))
+                return;
+
+            var me = ProjectWindowInterface.CurrentUsername;
+            var dirtyPaths = new HashSet<SPath>(dirtyEntries.Select(e => e.Path.ToSPath()));
+            var ownLocksToRelease = string.IsNullOrEmpty(me) || repo.CurrentLocks == null
+                ? new List<GitLock>()
+                : repo.CurrentLocks.Where(l => l.Owner.Name == me && dirtyPaths.Contains(l.Path)).ToList();
+
+            isBusy = true;
+            BeginOp("Discarding changes", false);
+            UpdateCommitEnabled();
+            repo.DiscardAllChanges().FinallyInUI((s, e) =>
+            {
+                AssetDatabase.Refresh();
+                if (s)
+                {
+                    foreach (var lck in ownLocksToRelease)
+                        repo.ReleaseLock(lck.Path, lck.ID, false).Start();
+                    checkedPaths.Clear();
+                    knownPaths.Clear();
+                }
+                repo.Refresh(CacheType.GitStatus);
+                repo.Refresh(CacheType.GitLocks);
+                LfsLocksModificationProcessor.RefreshOutdated();
+                isBusy = false;
+                EndOp(s, e, "Discard all", s ? "All changes discarded" : null);
             }).Start();
         }
 
@@ -2143,6 +2196,24 @@ namespace Unity.VersionControl.Git.UI
             b.style.borderTopWidth = b.style.borderBottomWidth = b.style.borderLeftWidth = b.style.borderRightWidth = primary ? 0 : 1;
             b.style.borderTopColor = b.style.borderBottomColor = b.style.borderLeftColor = b.style.borderRightColor = GitWaypointTheme.Border;
             GitWaypointTheme.Round(b, 7);
+            b.RegisterCallback<MouseEnterEvent>(_ => { if (b.enabledSelf) b.style.backgroundColor = hover; });
+            b.RegisterCallback<MouseLeaveEvent>(_ => b.style.backgroundColor = bg);
+        }
+
+        static void StyleDangerButton(Button b)
+        {
+            var danger = GitWaypointTheme.Conflict;
+            var bg = new Color(danger.r, danger.g, danger.b, 0.12f);
+            var hover = new Color(danger.r, danger.g, danger.b, 0.20f);
+            var border = new Color(danger.r, danger.g, danger.b, 0.55f);
+            b.style.height = 26;
+            b.style.paddingLeft = 14; b.style.paddingRight = 14;
+            b.style.paddingTop = 0; b.style.paddingBottom = 0;
+            b.style.color = danger;
+            b.style.backgroundColor = bg;
+            b.style.borderTopWidth = b.style.borderBottomWidth = b.style.borderLeftWidth = b.style.borderRightWidth = 1;
+            b.style.borderTopColor = b.style.borderBottomColor = b.style.borderLeftColor = b.style.borderRightColor = border;
+            GitWaypointTheme.Round(b, 6);
             b.RegisterCallback<MouseEnterEvent>(_ => { if (b.enabledSelf) b.style.backgroundColor = hover; });
             b.RegisterCallback<MouseLeaveEvent>(_ => b.style.backgroundColor = bg);
         }
