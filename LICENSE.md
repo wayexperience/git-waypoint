@@ -1,7 +1,9 @@
 MIT License
 
+Copyright (c) 2026 WAY Experience
 Copyright (c) 2019 Unity Technologies
 Copyright (c) 2016-2018 GitHub
+Copyright (c) 2020-2024 Andreia Gaita
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

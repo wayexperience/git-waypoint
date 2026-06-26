@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="media/logo.png" alt="Git Waypoint" width="160">
+</p>
+
 # Git Waypoint
 
 Git Waypoint is a Git client for the Unity Editor with **Perforce-style Git LFS auto-locking** — built so artists *and* developers can work on the same project without stepping on each other's binary assets. It installs a portable Git + Git LFS automatically, so users don't need Git pre-installed.
@@ -82,6 +86,8 @@ Huge thanks to their authors and contributors. Git Waypoint inherits and builds 
 ## License
 
 **[MIT](LICENSE)**
+
+Copyright 2026 WAY Experience
 
 Copyright 2020-2024 Andreia Gaita
 

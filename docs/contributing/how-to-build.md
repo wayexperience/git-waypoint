@@ -38,7 +38,7 @@ git lfs clone https://github.com/spoiledcat/git-for-unity
 
 ### Visual Studio
 
-To build with Visual Studio, open the solution file `GitForUnity.sln`. Select `Build Solution` in the `Build` menu.
+To build with Visual Studio, open the solution file `GitWaypoint.sln`. Select `Build Solution` in the `Build` menu.
 
 
 ## Build artifacts

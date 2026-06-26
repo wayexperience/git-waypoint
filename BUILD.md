@@ -38,7 +38,7 @@ All shell scripts take the same parameters:
 
 ### Visual Studio
 
-To build with Visual Studio, open the solution file `GitForUnity.sln`. Select `Build Solution` in the `Build` menu.
+To build with Visual Studio, open the solution file `GitWaypoint.sln`. Select `Build Solution` in the `Build` menu.
 
 ## Build artifacts
 
