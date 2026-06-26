@@ -89,6 +89,11 @@ cp src/it.wayexperience.unity.git-waypoint.api/Api/PlatformResources/gitattribut
 cp "src/it.wayexperience.unity.git-waypoint.ui/Editor/PlatformResources~/gitattributes" "$WT/Editor/PlatformResources~/gitattributes"
 "${SED[@]}" "s/\"version\": \"$OLD\"/\"version\": \"$VER\"/" "$WT/package.json"
 cp CHANGELOG.md "$WT/CHANGELOG.md"
+# Ship the legal files too - these are NOT .cs/.meta so the rsync above skips them; without copying them
+# here the package's LICENSE.md and third-party notices stay frozen at first-publish and never pick up
+# attribution fixes (e.g. WAY Experience / Andreia Gaita copyright, added bundle notices).
+cp src/it.wayexperience.unity.git-waypoint/LICENSE.md "$WT/LICENSE.md"
+cp "src/it.wayexperience.unity.git-waypoint/Third Party Notices.md" "$WT/Third Party Notices.md"
 
 echo ">> upm changes:"; git -C "$WT" status -s
 git -C "$WT" add -A
