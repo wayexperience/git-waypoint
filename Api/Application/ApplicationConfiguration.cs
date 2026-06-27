@@ -17,6 +17,10 @@ namespace Unity.VersionControl.Git
         public static int AutoFetchInterval { get; set; } = DefaultAutoFetchInterval; // minutes
         public static bool BlockOutdatedEdit { get; set; } = false;
         public static bool BlockOutdatedCommit { get; set; } = false;
+        // Enforce LFS locks held by other users: block saving/opening those files in the editor and mark
+        // them read-only on disk. Opt-in but on by default, since silently letting someone edit a file
+        // locked by a teammate defeats the point of locking.
+        public static bool BlockLockedByOthers { get; set; } = true;
 
         public static void Initialize(ISettings settings)
         {
@@ -32,6 +36,7 @@ namespace Unity.VersionControl.Git
             AutoFetchInterval = settings.Get(Constants.AutoFetchIntervalKey, AutoFetchInterval);
             BlockOutdatedEdit = settings.Get(Constants.BlockOutdatedEditKey, BlockOutdatedEdit);
             BlockOutdatedCommit = settings.Get(Constants.BlockOutdatedCommitKey, BlockOutdatedCommit);
+            BlockLockedByOthers = settings.Get(Constants.BlockLockedByOthersKey, BlockLockedByOthers);
         }
 
         public enum HierarchyIconAlignment

@@ -81,6 +81,12 @@ namespace Unity.VersionControl.Git.UI
         bool subscribed, needsRebuild, isBusy;
         bool historyRequested, branchesRequested;
 
+        // Ahead/behind per local tracking branch, cached so branch rows render their chip synchronously.
+        // Rebuilding the list re-reads this dict (no flicker); the values are refreshed out-of-band and only
+        // trigger a rebuild when they actually change. The in-flight set keeps repeated rebuilds from re-querying.
+        readonly Dictionary<string, GitAheadBehindStatus> aheadBehindByBranch = new Dictionary<string, GitAheadBehindStatus>();
+        readonly HashSet<string> aheadBehindInFlight = new HashSet<string>();
+
         // Identity onboarding: banner shown when git name/email aren't set yet.
         VisualElement identityBanner;
         bool userSubscribed;
@@ -1284,6 +1290,32 @@ namespace Unity.VersionControl.Git.UI
             bool any = local.Length > 0 || remote.Length > 0;
             branchesEmpty.style.display = any ? DisplayStyle.None : DisplayStyle.Flex;
             branchesList.style.display = any ? DisplayStyle.Flex : DisplayStyle.None;
+
+            RefreshBranchAheadBehind(local);
+        }
+
+        // Refreshes the cached ahead/behind for each local tracking branch out-of-band from rendering.
+        // Only flips needsRebuild when a value actually changed, so it converges (no rebuild storm) and the
+        // chip never flickers: rows always render from the dict, this just keeps the dict current.
+        void RefreshBranchAheadBehind(GitBranch[] local)
+        {
+            var mgr = Manager; if (mgr == null || mgr.GitClient == null) return;
+            foreach (var b in local)
+            {
+                if (string.IsNullOrEmpty(b.Tracking) || b.Tracking == "[None]") continue;
+                var name = b.Name; var tracking = b.Tracking;
+                if (!aheadBehindInFlight.Add(name)) continue;
+                mgr.GitClient.AheadBehindStatus(name, tracking).FinallyInUI((s, e, ab) =>
+                {
+                    aheadBehindInFlight.Remove(name);
+                    if (!s) return;
+                    if (!aheadBehindByBranch.TryGetValue(name, out var prev) || prev.Ahead != ab.Ahead || prev.Behind != ab.Behind)
+                    {
+                        aheadBehindByBranch[name] = ab;
+                        needsRebuild = true;
+                    }
+                }).Start();
+            }
         }
 
         VisualElement BuildBranchRow(GitBranch branch, bool isCurrent, bool isRemote)
@@ -1301,6 +1333,31 @@ namespace Unity.VersionControl.Git.UI
             GitWaypointTheme.ApplyMono(name); name.style.color = GitWaypointTheme.Text;
             row.Add(name);
 
+            // Outdated state for any local branch that tracks a remote, even when it's not the one in checkout.
+            // Lets you see at a glance how far behind/ahead each branch is without switching to it first.
+            // Rendered synchronously from the cached value so a list rebuild doesn't drop and re-add the chip
+            // (which looked like flashing); the value itself is refreshed in RefreshBranchAheadBehind().
+            if (!isRemote && !string.IsNullOrEmpty(branch.Tracking) && branch.Tracking != "[None]"
+                && aheadBehindByBranch.TryGetValue(branch.Name, out var ab) && (ab.Ahead > 0 || ab.Behind > 0))
+            {
+                // Two separate chips: ahead (to push, accent) and behind (to pull, outdated) are distinct
+                // actions, so colour-code them rather than merging into one mixed-meaning chip.
+                if (ab.Ahead > 0)
+                {
+                    var up = GitWaypointTheme.Chip("↑" + ab.Ahead, GitWaypointTheme.Accent);
+                    up.tooltip = ab.Ahead + " to push to " + branch.Tracking;
+                    up.style.marginLeft = 6; up.style.flexShrink = 0;
+                    row.Add(up);
+                }
+                if (ab.Behind > 0)
+                {
+                    var down = GitWaypointTheme.Chip("↓" + ab.Behind, GitWaypointTheme.Outdated);
+                    down.tooltip = ab.Behind + " to pull from " + branch.Tracking;
+                    down.style.marginLeft = 4; down.style.flexShrink = 0;
+                    row.Add(down);
+                }
+            }
+
             if (isCurrent)
             {
                 var head = GitWaypointTheme.Chip("HEAD", GitWaypointTheme.Accent);
@@ -1310,7 +1367,7 @@ namespace Unity.VersionControl.Git.UI
 
             if (!isCurrent)
             {
-                var sw = new Button(() => SwitchBranch(branch.Name)) { text = isRemote ? "Checkout" : "Switch" };
+                var sw = new Button(() => { if (isRemote) CheckoutRemoteBranch(branch.Name); else SwitchBranch(branch.Name); }) { text = isRemote ? "Checkout" : "Switch" };
                 StyleButton(sw, false); sw.style.flexShrink = 0;
                 row.Add(sw);
             }
@@ -1341,6 +1398,16 @@ namespace Unity.VersionControl.Git.UI
             }).Start();
         }
 
+        // Checking out a remote branch must create (or reuse) a local tracking branch and switch to it.
+        // Running `git checkout origin/foo` directly would land in detached HEAD ([NoBranch]); instead we
+        // strip the remote prefix and `git checkout foo`, which lets git DWIM the local tracking branch.
+        void CheckoutRemoteBranch(string remoteBranch)
+        {
+            var slash = remoteBranch.IndexOf('/');
+            var localName = slash >= 0 ? remoteBranch.Substring(slash + 1) : remoteBranch;
+            SwitchBranch(localName);
+        }
+
         void CreateBranch()
         {
             var repo = Repository; if (repo == null) return;
@@ -1348,9 +1415,8 @@ namespace Unity.VersionControl.Git.UI
             if (string.IsNullOrEmpty(name)) return;
             repo.CreateBranch(name, repo.CurrentBranchName).FinallyInUI((s, e) =>
             {
-                repo.Refresh(CacheType.Branches); repo.Refresh(CacheType.GitStatus); needsRebuild = true;
-                if (s) { newBranchField.value = ""; SetStatus("Created " + name, Sev.Ok); }
-                else NotifyFailure("Create branch", e);
+                if (s) { newBranchField.value = ""; SetStatus("Created " + name, Sev.Ok); SwitchBranch(name); }
+                else { repo.Refresh(CacheType.Branches); repo.Refresh(CacheType.GitStatus); needsRebuild = true; NotifyFailure("Create branch", e); }
             }).Start();
         }
 
@@ -1505,6 +1571,13 @@ namespace Unity.VersionControl.Git.UI
             lk.Add(SettingsRow("Lock on open", "What to do when you open a lockable file.", onOpen));
             lk.Add(SettingsRow("Release my locks on editor close", "Unlock your files automatically when you quit Unity.",
                 PlainToggle(LfsLocksModificationProcessor.ReleaseOnClose, v => LfsLocksModificationProcessor.ReleaseOnClose = v)));
+            lk.Add(SettingsRow("Block files locked by others", "Prevent opening/saving files a teammate has locked, and mark them read-only on disk.",
+                PlainToggle(ApplicationConfiguration.BlockLockedByOthers, v =>
+                {
+                    ApplicationConfiguration.BlockLockedByOthers = v;
+                    Manager.UserSettings.Set(Constants.BlockLockedByOthersKey, v);
+                    LfsLocksModificationProcessor.OnEnforcementSettingChanged();
+                })));
             lk.Add(new Label("Lockable files") { style = { color = GitWaypointTheme.Text, fontSize = 12, marginTop = 8 } });
             lk.Add(new Label("Which files are lockable is set by the `lockable` rules in your repository's .gitattributes - committed, so the whole team shares one policy. Edit .gitattributes to change it, or use \"Set up .gitattributes\" in the Repository section to install the recommended set.")
                 { style = { color = GitWaypointTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 8 } });

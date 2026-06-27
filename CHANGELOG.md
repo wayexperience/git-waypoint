@@ -3,6 +3,13 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.2] - 2026-06-28
+- Checking out a remote branch now creates and switches to a local tracking branch instead of landing in detached HEAD ([NoBranch]).
+- Creating a branch ("New Branch") now switches to the new branch.
+- Each local tracking branch shows its ahead/behind state with separate "to push" / "to pull" chips, even when it is not the checked-out branch.
+- Pulling diverged branches now works (explicit non-interactive merge) instead of failing with "Need to specify how to reconcile divergent branches".
+- New "Block files locked by others" setting (on by default): blocks opening and saving files locked by teammates and marks them read-only on disk.
+
 ## [0.2.1] - 2026-06-26
 - Nuovo pulsante «Discard all» nella tab Changes: annulla tutte le modifiche locali (git reset --hard più git clean -fd, incluse le directory non tracciate) previa conferma distruttiva, rilascia i lock LFS posseduti sui file modificati e aggiorna AssetDatabase, stato Git e lock
 

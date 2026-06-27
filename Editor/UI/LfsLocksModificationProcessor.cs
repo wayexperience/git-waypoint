@@ -137,12 +137,40 @@ namespace Unity.VersionControl.Git.UI
 
         public static string[] OnWillSaveAssets(string[] paths)
         {
+            // Hard-block the save of files locked by someone else: drop them from the set Unity is about to
+            // write. This is the reliable in-editor block (IsOpenForEdit alone doesn't stop a scene save).
+            if (ApplicationConfiguration.BlockLockedByOthers)
+            {
+                var blocked = paths.Where(p => IsLockedBySomeoneElse(BaseAssetPath(p))).ToArray();
+                if (blocked.Length > 0)
+                {
+                    paths = paths.Where(p => !IsLockedBySomeoneElse(BaseAssetPath(p))).ToArray();
+                    var first = GetLock(BaseAssetPath(blocked[0]));
+                    var who = first.HasValue ? first.Value.Owner.Name : "another user";
+                    EditorUtility.DisplayDialog("Locked file not saved",
+                        blocked.Length == 1
+                            ? string.Format("\"{0}\" is locked by {1} and was not saved.", blocked[0], who)
+                            : string.Format("{0} files are locked by other users and were not saved:\n\n{1}",
+                                blocked.Length, string.Join("\n", blocked)),
+                        "OK");
+                }
+            }
+
             if (AutoLockEnabled && LockOnSave)
             {
                 foreach (var p in paths)
                     AcquireLock(p);
             }
             return paths;
+        }
+
+        // The .meta and its base asset share a lock; resolve a save/edit path to the base asset so a lock
+        // on "Foo.unity" also covers "Foo.unity.meta". (Real suffix strip: TrimEnd would eat stray chars.)
+        private static string BaseAssetPath(string assetPath)
+        {
+            if (string.IsNullOrEmpty(assetPath))
+                return assetPath;
+            return assetPath.EndsWith(".meta") ? assetPath.Substring(0, assetPath.Length - ".meta".Length) : assetPath;
         }
 
         [OnOpenAsset]
@@ -167,6 +195,18 @@ namespace Unity.VersionControl.Git.UI
 #endif
             if (string.IsNullOrEmpty(path))
                 return false;
+
+            // Warn before opening something locked by someone else: edits can't be saved (the save is
+            // blocked and the file is read-only), so let them cancel instead of working for nothing.
+            if (ApplicationConfiguration.BlockLockedByOthers && IsLockedBySomeoneElse(BaseAssetPath(path)))
+            {
+                var lck = GetLock(BaseAssetPath(path));
+                var who = lck.HasValue ? lck.Value.Owner.Name : "another user";
+                bool open = EditorUtility.DisplayDialog("File locked by " + who,
+                    string.Format("\"{0}\" is locked by {1}. You can open it to look, but you won't be able to save changes.", path, who),
+                    "Open read-only", "Cancel");
+                return !open; // consume the open (block) when the user cancels
+            }
 
             if (mode == 2) // Ask
             {
@@ -279,7 +319,7 @@ namespace Unity.VersionControl.Git.UI
             if (!IsLockedBySomeoneElse(lck) && basePath != assetPath)
                 lck = GetLock(basePath);
 
-            if (IsLockedBySomeoneElse(lck))
+            if (ApplicationConfiguration.BlockLockedByOthers && IsLockedBySomeoneElse(lck))
             {
                 message = string.Format("File is locked for editing by {0}", lck.Value.Owner.Name);
                 return false;
@@ -529,6 +569,81 @@ namespace Unity.VersionControl.Git.UI
             {
                 lastLocksChangedEvent = cacheUpdateEvent;
                 locks = repository.CurrentLocks.ToDictionary(gitLock => gitLock.Path);
+                Enqueue(ReconcileReadOnly);
+            }
+        }
+
+        // Called by the settings UI when the enforcement flag is toggled, so read-only is applied/cleared
+        // immediately instead of waiting for the next lock refresh.
+        public static void OnEnforcementSettingChanged() => Enqueue(ReconcileReadOnly);
+
+        // Files we marked read-only, persisted (repo-relative) so a restart can still clear ones that were
+        // unlocked while the editor was closed - otherwise they'd stay stuck read-only with no record of why.
+        private const string PrefEnforcedReadOnly = "gitLock.enforcedReadOnly";
+        private static string EnforcedPrefKey => PrefEnforcedReadOnly + ":" + RepoDir();
+
+        private static HashSet<string> LoadEnforced()
+        {
+            var raw = EditorPrefs.GetString(EnforcedPrefKey, "");
+            var set = new HashSet<string>();
+            if (!string.IsNullOrEmpty(raw))
+                foreach (var p in raw.Split('\n'))
+                    if (p.Length > 0) set.Add(p);
+            return set;
+        }
+
+        private static void SaveEnforced(HashSet<string> set) => EditorPrefs.SetString(EnforcedPrefKey, string.Join("\n", set));
+
+        // Reconcile the read-only flag on disk so exactly the files locked by others are read-only. Only ever
+        // touches files we set ourselves (tracked in EnforcedPrefKey), so a file the user made read-only by
+        // hand is left alone. MAIN THREAD (reads loggedInUser / Application.dataPath).
+        private static void ReconcileReadOnly()
+        {
+            var enforced = LoadEnforced();
+
+            // Enforcement off (flag cleared, or identity not yet known): release everything we hold.
+            if (!ApplicationConfiguration.BlockLockedByOthers || string.IsNullOrEmpty(loggedInUser))
+            {
+                foreach (var rel in enforced)
+                    SetReadOnly(rel, false);
+                SaveEnforced(new HashSet<string>());
+                return;
+            }
+
+            var desired = new HashSet<string>();
+            foreach (var kv in locks)
+                if (IsLockedBySomeoneElse(kv.Value))
+                    desired.Add(kv.Key.ToString());
+
+            foreach (var rel in desired)
+                if (!enforced.Contains(rel))
+                    SetReadOnly(rel, true);
+            foreach (var rel in enforced)
+                if (!desired.Contains(rel))
+                    SetReadOnly(rel, false);
+
+            SaveEnforced(desired);
+        }
+
+        // Set/clear read-only on the asset file only (not its .meta: Unity rewrites .meta on import and a
+        // read-only meta can break reimport). repoRelative is the lock path; resolve it against the repo root.
+        private static void SetReadOnly(string repoRelative, bool readOnly)
+        {
+            try
+            {
+                var full = System.IO.Path.Combine(RepoDir(), repoRelative.Replace('/', System.IO.Path.DirectorySeparatorChar));
+                if (!System.IO.File.Exists(full))
+                    return;
+                var attrs = System.IO.File.GetAttributes(full);
+                var isReadOnly = (attrs & System.IO.FileAttributes.ReadOnly) != 0;
+                if (readOnly && !isReadOnly)
+                    System.IO.File.SetAttributes(full, attrs | System.IO.FileAttributes.ReadOnly);
+                else if (!readOnly && isReadOnly)
+                    System.IO.File.SetAttributes(full, attrs & ~System.IO.FileAttributes.ReadOnly);
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Warning(ex, "Could not change read-only attribute on {0}", repoRelative);
             }
         }
 

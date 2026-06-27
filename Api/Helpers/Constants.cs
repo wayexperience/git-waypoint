@@ -18,6 +18,7 @@ namespace Unity.VersionControl.Git
         public const string AutoFetchIntervalKey = "AutoFetchIntervalMinutes";
         public const string BlockOutdatedEditKey = "BlockOutdatedEdit";
         public const string BlockOutdatedCommitKey = "BlockOutdatedCommit";
+        public const string BlockLockedByOthersKey = "BlockLockedByOthers";
         public const string Iso8601Format = @"yyyy-MM-dd\THH\:mm\:ss.fffzzz";
         public const string Iso8601FormatZ = @"yyyy-MM-dd\THH\:mm\:ss\Z";
         public static readonly string[] Iso8601Formats = {
