@@ -13,19 +13,19 @@ namespace Unity.VersionControl.Git.Tasks
             IGitObjectFactory gitObjectFactory,
             int numberOfCommits,
             CancellationToken token = default)
-            : this(platform, gitObjectFactory, null, numberOfCommits, token)
+            : this(platform, gitObjectFactory, null, numberOfCommits, token: token)
         {}
 
         public GitLogTask(IPlatform platform,
             IGitObjectFactory gitObjectFactory,
             string file,
             CancellationToken token = default)
-            : this(platform, gitObjectFactory, file, 0, token)
+            : this(platform, gitObjectFactory, file, 0, token: token)
         {}
 
         public GitLogTask(IPlatform platform,
             IGitObjectFactory gitObjectFactory,
-            string file = null, int numberOfCommits = 0,
+            string file = null, int numberOfCommits = 0, string revisionRange = null,
             CancellationToken token = default)
             : base(platform, null, outputProcessor: new LogEntryOutputProcessor(gitObjectFactory), token: token)
         {
@@ -33,6 +33,10 @@ namespace Unity.VersionControl.Git.Tasks
             arguments = baseArguments;
             if (numberOfCommits > 0)
                 arguments += " -n " + numberOfCommits;
+
+            // A revision range (e.g. "HEAD..@{u}") goes after the log options and before any pathspec.
+            if (!string.IsNullOrEmpty(revisionRange))
+                arguments += " " + revisionRange;
 
             if (file != null)
             {

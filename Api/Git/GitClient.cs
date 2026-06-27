@@ -279,6 +279,12 @@ namespace Unity.VersionControl.Git
         ITask<List<GitLogEntry>> Log();
 
         /// <summary>
+        /// Executes `git log <revisionRange>` to get the commits in a revision range,
+        /// e.g. "HEAD..@{u}" for commits on the upstream not yet pulled. Returns empty on any git error.
+        /// </summary>
+        ITask<List<GitLogEntry>> LogRange(string revisionRange);
+
+        /// <summary>
         /// Executes `git log -- <file>` to get the history of a specific file.
         /// </summary>
         /// <param name="file"></param>
@@ -377,6 +383,16 @@ namespace Unity.VersionControl.Git
                 .Catch(exception => exception is ProcessException &&
                     exception.Message.StartsWith("fatal: your current branch") &&
                     exception.Message.EndsWith("does not have any commits yet"))
+                .Then((success, _, list) => success ? list : new List<GitLogEntry>());
+        }
+
+        ///<inheritdoc/>
+        public ITask<List<GitLogEntry>> LogRange(string revisionRange)
+        {
+            return new GitLogTask(platform, new GitObjectFactory(platform.Environment), revisionRange: revisionRange, token: Token)
+                .Configure(platform.ProcessManager)
+                // Any git failure (no upstream, unknown ref, empty repo) just means "nothing to show".
+                .Catch(exception => exception is ProcessException)
                 .Then((success, _, list) => success ? list : new List<GitLogEntry>());
         }
 

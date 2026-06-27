@@ -110,12 +110,23 @@ namespace Unity.VersionControl.Git.UI
     static class GitAutoFetch
     {
         private static double nextTime;
+        private static double lastFetchStart;
         private static bool fetching;
         public static bool IsFetching => fetching;
 
         static GitAutoFetch()
         {
             EditorApplication.update += Tick;
+        }
+
+        // Let the UI ask for a prompt fetch (e.g. when the window opens or reloads) instead of waiting up to
+        // the full interval, so you see incoming commits without pressing Fetch. Throttled so repeated
+        // opens/focus changes don't hammer the server.
+        public static void RequestFetchSoon()
+        {
+            if (fetching) return;
+            if (EditorApplication.timeSinceStartup - lastFetchStart < 15) return;
+            nextTime = 0;
         }
 
         private static void Tick()
@@ -136,6 +147,7 @@ namespace Unity.VersionControl.Git.UI
                 nextTime = EditorApplication.timeSinceStartup + interval * 60;
 
                 fetching = true;
+                lastFetchStart = EditorApplication.timeSinceStartup;
                 BackgroundGitRefresh.Mark();
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews(); // surface "Fetching…"
                 repository.Fetch()
@@ -143,7 +155,13 @@ namespace Unity.VersionControl.Git.UI
                     {
                         fetching = false;
                         if (success)
+                        {
                             LfsLocksModificationProcessor.RefreshOutdated(); // remote moved: recompute outdated files
+                            // Fetch() already recomputes ahead/behind; also refresh the log and branch lists so
+                            // the History "Incoming" section and the per-branch chips reflect the new commits.
+                            repository.Refresh(CacheType.GitLog);
+                            repository.Refresh(CacheType.Branches);
+                        }
                         UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
                     })
                     .Start();

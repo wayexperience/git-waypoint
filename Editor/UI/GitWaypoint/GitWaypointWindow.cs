@@ -72,6 +72,10 @@ namespace Unity.VersionControl.Git.UI
         VisualElement historyDetail;
         Label historyEmpty, historyHeader;
         string selectedCommit;
+        // Commits on the upstream not yet pulled (git log HEAD..@{u}), shown above local history so you can
+        // see how far behind you are and what's coming. Cached and rendered synchronously to avoid flicker.
+        [NonSerialized] List<GitLogEntry> incomingLog = new List<GitLogEntry>();
+        [NonSerialized] bool incomingInFlight;
 
         // Branches
         ScrollView branchesList;
@@ -137,6 +141,9 @@ namespace Unity.VersionControl.Git.UI
             BuildUI();
             Subscribe();
             SubscribeUser();
+            // Opening (or reloading) the window asks for a prompt fetch so incoming commits / behind counts
+            // show up without pressing Fetch. Throttled inside GitAutoFetch; respects the auto-fetch setting.
+            GitAutoFetch.RequestFetchSoon();
             ProjectWindowInterface.OptimisticChanged += OnOptimisticChanged;
             SetActiveTab(activeTab);
             needsRebuild = true;
@@ -1108,19 +1115,59 @@ namespace Unity.VersionControl.Git.UI
             historyHeader.text = "Commits on " + branch + sync;
 
             historyList.Clear();
+            // Incoming commits (to pull) first, so "what's about to land" reads top-down into your current HEAD.
+            if (incomingLog.Count > 0)
+            {
+                historyList.Add(SectionHeader("Incoming · " + incomingLog.Count + " to pull"));
+                foreach (var e in incomingLog)
+                    historyList.Add(BuildCommitRow(e, false, branch, incoming: true));
+            }
             for (int i = 0; i < log.Count; i++)
                 historyList.Add(BuildCommitRow(log[i], i == 0, branch));
 
-            bool any = log.Count > 0;
+            bool any = log.Count > 0 || incomingLog.Count > 0;
             historyEmpty.style.display = any ? DisplayStyle.None : DisplayStyle.Flex;
             historyList.style.display = any ? DisplayStyle.Flex : DisplayStyle.None;
 
-            if (selectedCommit != null && log.Any(e => e.CommitID == selectedCommit))
-                ShowCommitDetail(log.First(e => e.CommitID == selectedCommit));
+            var selectable = incomingLog.Concat(log);
+            if (selectedCommit != null && selectable.Any(e => e.CommitID == selectedCommit))
+                ShowCommitDetail(selectable.First(e => e.CommitID == selectedCommit));
             else { historyDetail.style.display = DisplayStyle.None; selectedCommit = null; }
+
+            RefreshIncoming(repo);
         }
 
-        VisualElement BuildCommitRow(GitLogEntry entry, bool isHead, string branchName)
+        // Load the commits on the upstream we haven't pulled (HEAD..@{u}) for the Incoming section. Only when
+        // we're actually behind (skips the git call otherwise / when there's no upstream). Cached; rebuilds
+        // only when the set changes, so it doesn't flicker on every history refresh.
+        void RefreshIncoming(IRepository repo)
+        {
+            bool behind = repo != null && repo.CurrentRemote.HasValue && repo.CurrentBehind > 0;
+            if (!behind)
+            {
+                if (incomingLog.Count > 0) { incomingLog = new List<GitLogEntry>(); needsRebuild = true; }
+                return;
+            }
+            var mgr = Manager;
+            if (mgr == null || mgr.GitClient == null || incomingInFlight) return;
+            incomingInFlight = true;
+            mgr.GitClient.LogRange("HEAD..@{u}").FinallyInUI((s, e, list) =>
+            {
+                incomingInFlight = false;
+                if (!s || list == null) return;
+                if (!SameCommits(incomingLog, list)) { incomingLog = list; needsRebuild = true; }
+            }).Start();
+        }
+
+        static bool SameCommits(List<GitLogEntry> a, List<GitLogEntry> b)
+        {
+            if (a.Count != b.Count) return false;
+            for (int i = 0; i < a.Count; i++)
+                if (a[i].CommitID != b[i].CommitID) return false;
+            return true;
+        }
+
+        VisualElement BuildCommitRow(GitLogEntry entry, bool isHead, string branchName, bool incoming = false)
         {
             bool selected = entry.CommitID == selectedCommit;
             var row = Row();
@@ -1131,9 +1178,9 @@ namespace Unity.VersionControl.Git.UI
             Border(row, bottom: 1);
             row.RegisterCallback<MouseDownEvent>(_ => { selectedCommit = entry.CommitID; RefreshHistory(); });
 
-            // graph node dot
+            // graph node dot: accent for HEAD, outdated/orange for incoming (to-pull), subdued otherwise
             var dot = new VisualElement { style = { width = 8, height = 8, marginTop = 4, marginRight = 8, flexShrink = 0 } };
-            dot.style.backgroundColor = isHead ? GitWaypointTheme.Accent : GitWaypointTheme.Subdued;
+            dot.style.backgroundColor = incoming ? GitWaypointTheme.Outdated : (isHead ? GitWaypointTheme.Accent : GitWaypointTheme.Subdued);
             GitWaypointTheme.Round(dot, 4);
             row.Add(dot);
 
@@ -1144,7 +1191,11 @@ namespace Unity.VersionControl.Git.UI
             // minWidth:0 lets the summary shrink below its content width so it ellipsizes instead of pushing
             // the ref pills off the row; the pills get flexShrink:0 so they always stay whole.
             titleRow.Add(new Label(entry.summary) { style = { flexGrow = 1, flexShrink = 1, minWidth = 0, color = GitWaypointTheme.Text, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, whiteSpace = WhiteSpace.NoWrap, overflow = Overflow.Hidden, textOverflow = TextOverflow.Ellipsis } });
-            if (isHead)
+            if (incoming)
+            {
+                var pull = GitWaypointTheme.Chip("↓ to pull", GitWaypointTheme.Outdated); pull.style.marginLeft = 4; pull.style.flexShrink = 0; titleRow.Add(pull);
+            }
+            else if (isHead)
             {
                 var head = GitWaypointTheme.Chip("HEAD", GitWaypointTheme.Accent); head.style.marginLeft = 4; head.style.flexShrink = 0; titleRow.Add(head);
                 if (!string.IsNullOrEmpty(branchName)) { var bch = GitWaypointTheme.Chip(branchName, GitWaypointTheme.UpToDate); bch.style.marginLeft = 4; bch.style.flexShrink = 0; titleRow.Add(bch); }
