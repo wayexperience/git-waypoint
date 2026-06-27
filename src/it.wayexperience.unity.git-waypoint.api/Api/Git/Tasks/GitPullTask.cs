@@ -24,6 +24,11 @@ namespace Unity.VersionControl.Git.Tasks
                 // --autostash so a rebase works even with uncommitted changes: git stashes them, rebases,
                 // then re-applies them (rebase requires a clean tree otherwise).
                 stringBuilder.Append(" --rebase --autostash");
+            else
+                // Be explicit about merging. Since git 2.27 a bare `git pull` aborts on divergent branches
+                // ("Need to specify how to reconcile") unless a strategy is set; --no-edit keeps the merge
+                // non-interactive so the child process can't hang waiting on a commit-message editor.
+                stringBuilder.Append(" --no-rebase --no-edit");
 
             if (!IsNullOrEmpty(remote))
             {
