@@ -1,37 +1,18 @@
-# Git for Unity Documentation
+# Git Waypoint Documentation
 
-This is the [Git for Unity](https://github.com/spoiledcat/git-for-unity) development
-documentation.
-
-## Contributing
-
-If you are interested in contributing to the project, you should read these
-resources to get familiar with how things work:
-
- - **[How Can I Contribute?](../CONTRIBUTING.md#how-can-i-contribute)** -
-    details about how you can participate
- - **[How To Build](contributing/how-to-build.md)** - learn how to build the
-    application
- - **[Style Guide](contributing/styleguide.md)** - notes on the coding style
- - **[Tooling](contributing/tooling.md)** - if you have a preferred IDE,
-    there's some enhancements to make your life easier
- - **[Troubleshooting](contributing/troubleshooting.md)** - some additional
-    known issues if you're having environment issues
-
-## Process
-
-Details about how the team is organizing and shipping Git for Unity:
-
- - **[Issue Triage](process/issue-triage.md)** - how we address issues reported
-    by users
- - **[Review](process/reviews.md)** - how we review contributions
- - **[Roadmap](process/roadmap.md)** - how we plan for the future
- - **[Release](process/release-process.md)** - how we review contributions
+This is the Git Waypoint development documentation.
 
 ## Using
 
-[Quick Guide](using/quick-guide.md)
+**[Quick Guide](using/quick-guide.md)** — install, first run, and daily use (Changes, Locks, Sync).
 
-These documents contain more details on how to use the Git for Unity plugin:
-- **[Installing and Updating the Git for Unity package](using/how-to-install-and-update.md)**
-- **[Getting Started with the Git for Unity package](using/getting-started.md)**
+## Contributing
+
+ - **[How To Build](contributing/how-to-build.md)** - learn how to build the
+    application
+ - **[How To Test](contributing/how-to-test.md)** - how to run the test suite
+ - **[Style Guide](contributing/styleguide.md)** - notes on the coding style
+
+## Releasing
+
+See **[RELEASING.md](../RELEASING.md)** at the repo root - one command (`release.sh`) does the whole release.

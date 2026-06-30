@@ -1,5 +1,3 @@
-# Contributing to Git for Unity
-
 ## Style Guide
 - PascalCase for all types regardless of visibility
 - PascalCase for public members and const members

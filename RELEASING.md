@@ -21,5 +21,5 @@ Then, to update a test project that installs `…git-waypoint.git#upm`: in Unity
 ## Notes / gotchas
 - Commits use `commit.gpgsign=false` (1Password SSH signing fails in non-interactive shells).
 - The real runtime version comes from `package.json` via `PackageInfo.FindForAssembly`; `FallbackVersion` is only a last resort (e.g. if the Package Manager isn't ready yet), but `release.sh` bumps it anyway so it's never stale.
-- The unified `upm` package is a flattened build artifact; `release.sh` mirrors only the source trees, so for code-only releases it matches what the full packaging pipeline would produce.
+- The unified `upm` package is a flattened build artifact; `release.sh` mirrors only the source trees plus the legal files and the `.gitattributes` resource, there's no separate packaging pipeline.
 - The GitHub Release step needs the `gh` CLI authenticated; if `gh` is missing the tag is still pushed and the script prints the `gh release create` command to run by hand.

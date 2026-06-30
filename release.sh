@@ -89,7 +89,10 @@ rsync -rc --delete "${RS_FILTER[@]}" \
 rm -f "$WT/com.unity.editor.tasks/package.json" "$WT/com.unity.editor.tasks/package.json.meta"
 # Also ship the .gitattributes resource (what "Set up .gitattributes" writes) - it's not a .cs.
 cp src/it.wayexperience.unity.git-waypoint.api/Api/PlatformResources/gitattributes "$WT/Api/PlatformResources/gitattributes"
-cp "src/it.wayexperience.unity.git-waypoint.ui/Editor/PlatformResources~/gitattributes" "$WT/Editor/PlatformResources~/gitattributes"
+# The ui-side Editor/PlatformResources~ copy was a fallback for a two-package (api+ui) install; the
+# package is unified now, so AssemblyResources.TryGetFile always resolves Api/PlatformResources first
+# and that fallback is unreachable. Source copy removed; purge it from the published package too.
+rm -rf "$WT/Editor/PlatformResources~"
 "${SED[@]}" "s/\"version\": \"$OLD\"/\"version\": \"$VER\"/" "$WT/package.json"
 cp CHANGELOG.md "$WT/CHANGELOG.md"
 # Ship the legal files too - these are NOT .cs/.meta so the rsync above skips them; without copying them
