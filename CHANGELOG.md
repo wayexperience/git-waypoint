@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.4] - 2026-07-01
+- Modern .gitattributes (fonts, glb/gltf, dds, LFS for lighting/occlusion data, text=auto); removed dead legacy publish pipeline and stale 2018-era docs
+
 ## [0.2.3] - 2026-06-28
 - History now lists incoming commits (those on the upstream you haven't pulled yet) above your local history, each with its changed files, so you can see how far behind you are and what's coming before you pull.
 - The window now fetches when it opens (throttled), and auto-fetch also refreshes the history and branch lists, so incoming commits and behind counts appear on their own without pressing Fetch.

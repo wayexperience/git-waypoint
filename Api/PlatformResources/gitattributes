@@ -2,6 +2,9 @@
 # UNITY GITATTRIBUTES
 # -------------------------------------------------------------------------
 
+# Normalize line endings for any text file not matched below
+* text=auto
+
 # Define macros (makes the file cleaner)
 [attr]lfs               filter=lfs diff=lfs merge=lfs -text
 [attr]unity-json        eol=lf linguist-language=json
@@ -68,7 +71,8 @@ Assets/Plugins/** linguist-generated
 # Unity Specific Binary
 *.cubemap               lfs
 *.unitypackage          lfs
-LightingData.asset      binary
+LightingData.asset      lfs
+OcclusionCullingData.asset lfs
 
 # 3D Models
 *.3dm                   lfs
@@ -83,6 +87,8 @@ LightingData.asset      binary
 *.dxf                   lfs
 *.fbx                   lfs
 *.FBX                   lfs
+*.glb                   lfs
+*.gltf                  lfs
 *.jas                   lfs
 *.lws                   lfs
 *.lxo                   lfs
@@ -119,6 +125,7 @@ LightingData.asset      binary
 
 # Images & Textures
 *.bmp                   lfs
+*.dds                   lfs
 *.exr                   lfs
 *.gif                   lfs
 *.hdr                   lfs
@@ -132,6 +139,10 @@ LightingData.asset      binary
 *.tif                   lfs
 *.tiff                  lfs
 *.webp                  lfs
+
+# Fonts
+*.otf                   lfs
+*.ttf                   lfs
 
 # Design Source Files
 *.ai                    lfs
@@ -153,6 +164,8 @@ LightingData.asset      binary
 *.dll                   lfs
 *.exe                   lfs
 *.pdb                   lfs
+# .mdb here is the legacy Mono debug symbol format (pairs with .dll), not Access
+*.mdb                   lfs
 *.so                    lfs
 *.a                     lfs
 
@@ -182,11 +195,14 @@ LightingData.asset      binary
 *.fbx                   lockable
 *.obj                   lockable
 *.blend                 lockable
+*.glb                   lockable
+*.gltf                  lockable
 *.psd                   lockable
 *.png                   lockable
 *.tga                   lockable
 *.tif                   lockable
 *.tiff                  lockable
+*.dds                   lockable
 *.exr                   lockable
 *.wav                   lockable
 *.mp3                   lockable

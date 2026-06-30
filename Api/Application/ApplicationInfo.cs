@@ -27,7 +27,7 @@ namespace Unity.VersionControl.Git
 internal static partial class ThisAssembly {
         // Last resort only (reached if both the stamped attribute and the Package Manager lookup fail).
         // The real version comes from package.json via PackageInfo.FindForAssembly, so this rarely shows.
-        public const string FallbackVersion = "0.2.3";
+        public const string FallbackVersion = "0.2.4";
 
     public static string GetInformationalVersion()
     {
