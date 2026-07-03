@@ -32,7 +32,8 @@ namespace Unity.VersionControl.Git.UI
         double statusStamp = -1;
 
         // Header / toolbar
-        Label branchLabel, remoteLabel, syncLabel, dotsLabel;
+        Label branchLabel, remoteLabel, syncLabel;
+        VisualElement spinner;
         Button fetchButton, pullButton, pushButton;
         string runningOp;
         double opStartTime;
@@ -172,13 +173,19 @@ namespace Unity.VersionControl.Git.UI
                     statusTime.text = AgoShort(EditorApplication.timeSinceStartup - statusStamp);
             }).Every(250);
 
-            // Animate the running-op dots in a fixed-width label, so the status text never jitters.
+            // Spin the ring while an op runs; it sits to the left of the status text as a leading icon
+            // (coherent with the "✓" on the idle "Up to date" state). Hidden (not removed) when idle so it
+            // keeps its layout footprint and the status text never shifts.
             rootVisualElement.schedule.Execute(() =>
             {
-                if (runningOp == null) { if (dotsLabel.text.Length > 0) dotsLabel.text = ""; return; }
-                int dots = 1 + (int)(EditorApplication.timeSinceStartup * 3) % 3;
-                dotsLabel.text = new string('.', dots);
-            }).Every(150);
+                if (runningOp == null)
+                {
+                    if (spinner.resolvedStyle.visibility == Visibility.Visible) spinner.style.visibility = Visibility.Hidden;
+                    return;
+                }
+                spinner.style.visibility = Visibility.Visible;
+                spinner.style.rotate = new Rotate(new Angle((float)((EditorApplication.timeSinceStartup * 360) % 360)));
+            }).Every(30);
         }
 
         void OnDisable()
@@ -349,9 +356,20 @@ namespace Unity.VersionControl.Git.UI
             syncBox.style.alignItems = Align.Center;
             syncBox.style.flexShrink = 0;
             syncLabel = new Label("") { style = { fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold } };
-            dotsLabel = new Label("") { style = { width = 18, fontSize = 12, unityFontStyleAndWeight = FontStyle.Bold, unityTextAlign = TextAnchor.MiddleLeft, color = GitWaypointTheme.Accent } };
+            // A real rotating ring spinner (a VisualElement, not a glyph, so it never depends on the editor
+            // font atlas): bright accent arc on top, dim track on the other sides; rotated each tick below.
+            spinner = new VisualElement { style = { width = 12, height = 12, flexShrink = 0, marginRight = 6, visibility = Visibility.Hidden } };
+            spinner.style.borderTopWidth = spinner.style.borderRightWidth = spinner.style.borderBottomWidth = spinner.style.borderLeftWidth = 2;
+            var spinnerTrack = new Color(GitWaypointTheme.Accent.r, GitWaypointTheme.Accent.g, GitWaypointTheme.Accent.b, 0.25f);
+            spinner.style.borderTopColor = GitWaypointTheme.Accent;
+            spinner.style.borderRightColor = spinner.style.borderBottomColor = spinner.style.borderLeftColor = spinnerTrack;
+            GitWaypointTheme.Round(spinner, 6);
+            // Spinner sits before the label so the status text stays the trailing element; the marginRight
+            // matches the toolbar buttons' inset (paddingRight 10 + marginRight 6) so the label's right edge
+            // lines up with the Refresh button below it.
+            syncBox.style.marginRight = 6;
+            syncBox.Add(spinner);
             syncBox.Add(syncLabel);
-            syncBox.Add(dotsLabel);
             header.Add(syncBox);
             root.Add(header);
         }
@@ -1903,6 +1921,7 @@ namespace Unity.VersionControl.Git.UI
             var repo = Repository; if (repo == null) return;
             repo.Refresh(CacheType.GitStatus);
             repo.Refresh(CacheType.GitLocks);
+            repo.Refresh(CacheType.Branches);
             LfsLocksModificationProcessor.RefreshOutdated();
             RefreshActive();
             SetStatus("Refreshed", Sev.Ok);

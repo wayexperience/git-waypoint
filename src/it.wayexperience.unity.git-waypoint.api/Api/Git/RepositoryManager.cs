@@ -629,29 +629,27 @@ namespace Unity.VersionControl.Git
 
         private void UpdateLocalBranches()
         {
+            // Enumerate through git (not the .git/refs/heads filesystem walk) so packed refs are
+            // included. Tracking info still comes from .git/config, matching the previous behaviour.
             var branches = new Dictionary<string, ConfigBranch>();
-            UpdateLocalBranches(branches, repositoryPaths.BranchesPath, config.GetBranches().Where(x => x.IsTracking), "");
-            LocalBranchesUpdated?.Invoke(branches);
-        }
+            var configBranches = config.GetBranches().Where(x => x.IsTracking).ToArray();
 
-        private void UpdateLocalBranches(Dictionary<string, ConfigBranch> branches, SPath path, IEnumerable<ConfigBranch> configBranches, string prefix)
-        {
-            foreach (var file in path.Files())
+            foreach (var gitBranch in GitClient.ListLocalBranches().RunSynchronously())
             {
-                var branchName = prefix + file.FileName;
-                var branch =
-                    configBranches.Where(x => x.Name == branchName).Select(x => x as ConfigBranch?).FirstOrDefault();
-                if (!branch.HasValue)
+                var branchName = gitBranch.Name;
+                if (branchName == "detached" || branches.ContainsKey(branchName))
                 {
-                    branch = new ConfigBranch(branchName);
+                    continue;
                 }
-                branches.Add(branchName, branch.Value);
+
+                var configBranch = configBranches
+                    .Where(x => x.Name == branchName)
+                    .Select(x => (ConfigBranch?)x)
+                    .FirstOrDefault();
+                branches.Add(branchName, configBranch ?? new ConfigBranch(branchName));
             }
 
-            foreach (var dir in path.Directories())
-            {
-                UpdateLocalBranches(branches, dir, configBranches, prefix + dir.FileName + "/");
-            }
+            LocalBranchesUpdated?.Invoke(branches);
         }
 
         private void UpdateRemoteBranches()
@@ -659,22 +657,33 @@ namespace Unity.VersionControl.Git
             var remotes = config.GetRemotes().ToArray().ToDictionary(x => x.Name, x => x);
             var remoteBranches = new Dictionary<string, Dictionary<string, ConfigBranch>>();
 
-            foreach (var remote in remotes.Keys)
+            // Enumerate through git (`git branch -vvr`) instead of walking .git/refs/remotes so packed
+            // refs are included. A fresh clone keeps every remote branch in packed-refs, so the old
+            // filesystem walk only ever saw whatever was loose (typically just origin/HEAD).
+            foreach (var gitBranch in GitClient.ListRemoteBranches().RunSynchronously())
             {
-                var branchList = new Dictionary<string, ConfigBranch>();
-                var basedir = repositoryPaths.RemotesPath.Combine(remote);
-                if (basedir.Exists())
+                var fullName = gitBranch.Name;
+                var separator = fullName.IndexOf('/');
+                if (separator <= 0)
                 {
-                    foreach (var branch in
-                        basedir.Files(true)
-                               .Select(x => x.RelativeTo(basedir))
-                               .Select(x => x.ToString(SlashMode.Forward)))
-                    {
-                        branchList.Add(branch, new ConfigBranch(branch, remotes[remote], null));
-                    }
+                    continue;
+                }
 
+                var remote = fullName.Substring(0, separator);
+                var branch = fullName.Substring(separator + 1);
+                // Skip the "origin/HEAD -> origin/main" symbolic ref and refs for unknown remotes.
+                if (branch == "HEAD" || !remotes.ContainsKey(remote))
+                {
+                    continue;
+                }
+
+                Dictionary<string, ConfigBranch> branchList;
+                if (!remoteBranches.TryGetValue(remote, out branchList))
+                {
+                    branchList = new Dictionary<string, ConfigBranch>();
                     remoteBranches.Add(remote, branchList);
                 }
+                branchList[branch] = new ConfigBranch(branch, remotes[remote], null);
             }
 
             RemoteBranchesUpdated?.Invoke(remotes, remoteBranches);

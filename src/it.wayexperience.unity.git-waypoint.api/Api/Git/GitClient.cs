@@ -85,6 +85,20 @@ namespace Unity.VersionControl.Git
         ITask<List<GitLock>> ListLocks(bool local);
 
         /// <summary>
+        /// Executes `git branch -vv` to list local branches. Reads through git so packed refs
+        /// (packed-refs / reftable) are included, not just loose ref files.
+        /// </summary>
+        /// <returns><see cref="List&lt;T&gt;"/> of <see cref="GitBranch"/> output</returns>
+        ITask<List<GitBranch>> ListLocalBranches();
+
+        /// <summary>
+        /// Executes `git branch -vvr` to list remote-tracking branches. Reads through git so packed
+        /// refs (packed-refs / reftable) are included, not just loose ref files.
+        /// </summary>
+        /// <returns><see cref="List&lt;T&gt;"/> of <see cref="GitBranch"/> output</returns>
+        ITask<List<GitBranch>> ListRemoteBranches();
+
+        /// <summary>
         /// Executes `git pull` to perform a pull operation.
         /// </summary>
         /// <param name="remote">The remote to pull from</param>
@@ -489,6 +503,20 @@ namespace Unity.VersionControl.Git
         public ITask<List<GitLock>> ListLocks(bool local)
         {
             return new GitListLocksTask(platform, local, Token)
+                .Configure(platform.ProcessManager);
+        }
+
+        ///<inheritdoc/>
+        public ITask<List<GitBranch>> ListLocalBranches()
+        {
+            return new GitListLocalBranchesTask(platform, Token)
+                .Configure(platform.ProcessManager);
+        }
+
+        ///<inheritdoc/>
+        public ITask<List<GitBranch>> ListRemoteBranches()
+        {
+            return new GitListRemoteBranchesTask(platform, Token)
                 .Configure(platform.ProcessManager);
         }
 
