@@ -3,6 +3,12 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.5] - 2026-07-03
+- Remote branches now appear immediately after cloning: the branch list is read through git (git branch -vv / -vvr), so branches kept in packed-refs — the normal state of a fresh clone — are included, not just loose ref files.
+- Refresh now also re-reads the local and remote branch lists.
+- The sync-status label now lines up with the toolbar buttons.
+- The activity indicator is now a rotating ring spinner instead of animated dots.
+
 ## [0.2.4] - 2026-07-01
 - Modern .gitattributes (fonts, glb/gltf, dds, LFS for lighting/occlusion data, text=auto); removed dead legacy publish pipeline and stale 2018-era docs
 
