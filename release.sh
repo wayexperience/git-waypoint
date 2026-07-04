@@ -45,14 +45,16 @@ done
 "${SED[@]}" "s#\(\"it.wayexperience.unity.git-waypoint.api\": \"\)[^\"]*\"#\1$VER\"#" \
   src/it.wayexperience.unity.git-waypoint.ui/package.json
 
-# 2) prepend a CHANGELOG entry under the header
+# 2) prepend a CHANGELOG entry under the header. Pass the note through the environment (ENVIRON) instead
+# of -v: awk's -v chokes on embedded newlines ("awk: newline in string") and silently dropped the whole
+# entry for multi-bullet notes. ENVIRON keeps newlines intact, so a note with "\n- " lines becomes bullets.
 DATE=$(date +%Y-%m-%d)
 TMP=$(mktemp)
-awk -v ver="$VER" -v date="$DATE" -v note="$NOTE" '
+NOTE="$NOTE" awk -v ver="$VER" -v date="$DATE" '
   NR==1 && !done { print; next }
-  /^## \[/ && !done { print "## [" ver "] - " date "\n- " note "\n"; done=1 }
+  /^## \[/ && !done { print "## [" ver "] - " date "\n- " ENVIRON["NOTE"] "\n"; done=1 }
   { print }
-  END { if (!done) print "\n## [" ver "] - " date "\n- " note }
+  END { if (!done) print "\n## [" ver "] - " date "\n- " ENVIRON["NOTE"] }
 ' CHANGELOG.md > "$TMP" && mv "$TMP" CHANGELOG.md
 
 # 3) commit the source
