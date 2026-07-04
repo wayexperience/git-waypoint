@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.6] - 2026-07-04
+- Remote branches now appear as soon as the window opens on a freshly cloned repository, instead of only after the first fetch: the branch list is now refreshed when the window binds to the repo (a fresh clone keeps every ref packed, so the filesystem watcher that used to trigger this never fired).
+
 ## [0.2.5] - 2026-07-03
 - Remote branches now appear immediately after cloning: the branch list is read through git (git branch -vv / -vvr), so branches kept in packed-refs — the normal state of a fresh clone — are included, not just loose ref files.
 - Refresh now also re-reads the local and remote branch lists.

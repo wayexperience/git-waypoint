@@ -2433,6 +2433,12 @@ namespace Unity.VersionControl.Git.UI
             repo.LogChanged += OnCacheChanged;
             repo.LocalAndRemoteBranchListChanged += OnCacheChanged;
             subscribed = true;
+
+            // Enumerate branches once now, on bind. A fresh clone keeps every remote branch in packed-refs,
+            // so nothing under .git/refs/remotes ever changes and the branch-list filesystem watcher never
+            // fires — without this the branch cache stays empty until the first fetch. This reads through git
+            // (git branch -vv/-vvr), which sees packed refs, so remotes show up as soon as the window opens.
+            repo.Refresh(CacheType.Branches);
         }
 
         void Unsubscribe()
