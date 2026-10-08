@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.7] - 2026-10-08
+- New "Release all mine" button in the Locks tab: releases every lock you hold in one click, after a confirmation that warns about locked files with uncommitted changes
+
 ## [0.2.6] - 2026-07-04
 - Remote branches now appear as soon as the window opens on a freshly cloned repository, instead of only after the first fetch: the branch list is now refreshed when the window binds to the repo (a fresh clone keeps every ref packed, so the filesystem watcher that used to trigger this never fired).
 

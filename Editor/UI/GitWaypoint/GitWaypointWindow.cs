@@ -63,6 +63,7 @@ namespace Unity.VersionControl.Git.UI
         VisualElement lockStatsRow;
         ScrollView locksList;
         Label locksEmpty, lockAutoLabel;
+        Button releaseAllLocksBtn;
         TextField lockSearchField;
         string lockSearchText = "";
         LockFilter lockFilter = LockFilter.All;
@@ -911,6 +912,10 @@ namespace Unity.VersionControl.Git.UI
             Border(footer, top: 1);
             lockAutoLabel = new Label("") { style = { flexGrow = 1, color = GitWaypointTheme.Subdued, fontSize = 11 } };
             footer.Add(lockAutoLabel);
+            releaseAllLocksBtn = new Button(ReleaseAllMyLocksConfirm) { text = "Release all mine" };
+            StyleButton(releaseAllLocksBtn, false); releaseAllLocksBtn.style.flexShrink = 0; releaseAllLocksBtn.style.marginRight = 6;
+            releaseAllLocksBtn.style.display = DisplayStyle.None; // shown by RefreshLocks once I hold locks
+            footer.Add(releaseAllLocksBtn);
             var lockSettingsBtn = new Button(() => SetActiveTab(Tab.Settings)) { text = "Locking settings" };
             StyleButton(lockSettingsBtn, false); lockSettingsBtn.style.flexShrink = 0;
             footer.Add(lockSettingsBtn);
@@ -934,6 +939,7 @@ namespace Unity.VersionControl.Git.UI
             lockStatsRow.Add(StatCard("My locks", mine, GitWaypointTheme.UpToDate, false));
             lockStatsRow.Add(StatCard("Team locks", team, GitWaypointTheme.Accent, false));
             lockStatsRow.Add(StatCard("Stale > " + StaleHours + "h", stale, GitWaypointTheme.Outdated, true));
+            releaseAllLocksBtn.style.display = mine > 0 ? DisplayStyle.Flex : DisplayStyle.None;
 
             foreach (var kv in lockFilterButtons)
             {
@@ -1036,6 +1042,25 @@ namespace Unity.VersionControl.Git.UI
                 row.Add(b);
             }
             return row;
+        }
+
+        void ReleaseAllMyLocksConfirm()
+        {
+            var repo = Repository;
+            if (repo == null) return;
+            var me = ProjectWindowInterface.CurrentUsername;
+            var mine = (repo.CurrentLocks ?? new List<GitLock>()).Where(l => !string.IsNullOrEmpty(me) && l.Owner.Name == me).ToList();
+            if (mine.Count == 0) return;
+            var changed = new HashSet<SPath>((repo.CurrentChanges ?? new List<GitStatusEntry>()).Select(c => c.Path.ToSPath()));
+            int withChanges = mine.Count(l => changed.Contains(l.Path));
+            var message = "Release your " + mine.Count + (mine.Count == 1 ? " lock" : " locks") + "? Teammates will be able to edit these files.";
+            if (withChanges > 0)
+                message += "\n\n" + withChanges + (withChanges == 1 ? " of them has" : " of them have") + " changes you haven't committed yet: someone else could edit "
+                         + (withChanges == 1 ? "it" : "them") + " in the meantime.";
+            if (!EditorUtility.DisplayDialog("Release all my locks", message, "Release all", "Cancel"))
+                return;
+            ProjectWindowInterface.ReleaseAllMyLocks(err => NotifyFailure("Unlock", new Exception(err)));
+            needsRebuild = true;
         }
 
         void ReleaseLock(GitLock lck, bool force)
