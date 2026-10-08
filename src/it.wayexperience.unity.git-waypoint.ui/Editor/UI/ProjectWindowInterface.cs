@@ -257,6 +257,18 @@ namespace Unity.VersionControl.Git.UI
                 .Start();
         }
 
+        // Release every lock the server says is mine (skipping ones already being released). Returns how many
+        // releases were started: 0 until the locks are loaded and we know who we are.
+        public static int ReleaseAllMyLocks(Action<string> onError = null)
+        {
+            if (Repository == null || string.IsNullOrEmpty(currentUsername))
+                return 0;
+            var mine = locks.Where(l => l.Owner.Name == currentUsername && !IsPendingUnlock(l.Path.ToString())).ToList();
+            foreach (var l in mine)
+                ReleaseLock(l.Path.ToString(), false, onError);
+            return mine.Count;
+        }
+
         // git-lfs reports an existing lock as "already created lock" - benign, the file is locked already.
         private static bool IsAlreadyLockedError(Exception ex)
         {
