@@ -3,6 +3,9 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.8] - 2026-10-12
+- While a player build is running, saving a file locked by someone else no longer opens a blocking popup: the file is still skipped and a warning is written to the Console, so builds run unattended
+
 ## [0.2.7] - 2026-10-08
 - New "Release all mine" button in the Locks tab: releases every lock you hold in one click, after a confirmation that warns about locked files with uncommitted changes
 

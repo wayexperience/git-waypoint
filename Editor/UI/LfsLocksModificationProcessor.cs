@@ -147,12 +147,16 @@ namespace Unity.VersionControl.Git.UI
                     paths = paths.Where(p => !IsLockedBySomeoneElse(BaseAssetPath(p))).ToArray();
                     var first = GetLock(BaseAssetPath(blocked[0]));
                     var who = first.HasValue ? first.Value.Owner.Name : "another user";
-                    EditorUtility.DisplayDialog("Locked file not saved",
-                        blocked.Length == 1
-                            ? string.Format("\"{0}\" is locked by {1} and was not saved.", blocked[0], who)
-                            : string.Format("{0} files are locked by other users and were not saved:\n\n{1}",
-                                blocked.Length, string.Join("\n", blocked)),
-                        "OK");
+                    var message = blocked.Length == 1
+                        ? string.Format("\"{0}\" is locked by {1} and was not saved.", blocked[0], who)
+                        : string.Format("{0} files are locked by other users and were not saved:\n\n{1}",
+                            blocked.Length, string.Join("\n", blocked));
+                    // During a player build Unity saves assets repeatedly and a modal dialog stalls the whole
+                    // build until someone clicks OK. The save is blocked either way, so just log it.
+                    if (BuildPipeline.isBuildingPlayer)
+                        Debug.LogWarning("Locked file not saved: " + message);
+                    else
+                        EditorUtility.DisplayDialog("Locked file not saved", message, "OK");
                 }
             }
 
