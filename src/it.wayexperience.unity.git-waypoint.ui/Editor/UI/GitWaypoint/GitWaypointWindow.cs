@@ -1672,6 +1672,15 @@ namespace Unity.VersionControl.Git.UI
                     Manager.UserSettings.Set(Constants.BlockLockedByOthersKey, v);
                     LfsLocksModificationProcessor.OnEnforcementSettingChanged();
                 })));
+            lk.Add(SettingsRow("Popup when a locked file isn't saved", "Show a popup when a file locked by a teammate can't be saved. When off, you only get a warning in the Console.",
+                PlainToggle(ApplicationConfiguration.LockedSavePopup, v => { ApplicationConfiguration.LockedSavePopup = v; Manager.UserSettings.Set(Constants.LockedSavePopupKey, v); })));
+            lk.Add(SettingsRow("Only Git Waypoint makes files read-only", "Files stay editable unless a teammate has locked them, and exclusions in .gitattributes are respected. Outside Unity, files nobody has locked are no longer read-only.",
+                PlainToggle(ApplicationConfiguration.ManageReadOnly, v =>
+                {
+                    ApplicationConfiguration.ManageReadOnly = v;
+                    Manager.UserSettings.Set(Constants.ManageReadOnlyKey, v);
+                    LfsLocksModificationProcessor.OnManageReadOnlyChanged();
+                })));
             lk.Add(new Label("Lockable files") { style = { color = GitWaypointTheme.Text, fontSize = 12, marginTop = 8 } });
             lk.Add(new Label("Which files are lockable is set by the `lockable` rules in your repository's .gitattributes - committed, so the whole team shares one policy. Edit .gitattributes to change it, or use \"Set up .gitattributes\" in the Repository section to install the recommended set.")
                 { style = { color = GitWaypointTheme.Subdued, fontSize = 10, whiteSpace = WhiteSpace.Normal, marginBottom = 8 } });

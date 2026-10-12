@@ -130,7 +130,54 @@ namespace Unity.VersionControl.Git.UI
             {
                 repository.LocksChanged += RepositoryOnLocksChanged;
                 repository.CheckAndRaiseEventsIfCacheNewer(CacheType.GitLocks, lastLocksChangedEvent);
+                if (ApplicationConfiguration.ManageReadOnly)
+                    ApplyManageReadOnly();
             }
+        }
+
+        // ----------------- read-only ownership -----------------
+        // git-lfs makes every unlocked lockable file read-only, but it ignores `-lockable` exclusions in
+        // .gitattributes (git-lfs issue #4246), so excluded files stay read-only. With ManageReadOnly on, git-lfs
+        // stops touching permissions (lfs.setlockablereadonly=false, repo-local) and only ReconcileReadOnly
+        // decides: files locked by others are read-only, everything else is writable.
+
+        public static void OnManageReadOnlyChanged() => ApplyManageReadOnly();
+
+        // MAIN THREAD (reads RepoDir / LockableExtensions / locks); git and disk work run in the background.
+        private static void ApplyManageReadOnly()
+        {
+            if (repository == null)
+                return;
+
+            string dir = RepoDir();
+            if (!ApplicationConfiguration.ManageReadOnly)
+            {
+                // Hand read-only back to git-lfs; it re-applies it on the next checkout/pull.
+                Task.Run(() => { string o, e; RunGit(new[] { "config", "--local", "--unset", "lfs.setlockablereadonly" }, dir, out o, out e); });
+                return;
+            }
+
+            var extensions = new HashSet<string>(LockableExtensions, System.StringComparer.OrdinalIgnoreCase);
+            // Skip files locked by others, plus the ones we already enforce: at startup the lock list may not be
+            // loaded yet, and ReconcileReadOnly won't re-flag a file it believes it already made read-only.
+            var lockedByOthers = LoadEnforced();
+            lockedByOthers.UnionWith(locks.Where(kv => IsLockedBySomeoneElse(kv.Value)).Select(kv => kv.Key.ToString()));
+            Task.Run(() =>
+            {
+                string o, e;
+                RunGit(new[] { "config", "--local", "lfs.setlockablereadonly", "false" }, dir, out o, out e);
+
+                // Clear the read-only flag git-lfs already set on lockable files nobody else holds.
+                if (extensions.Count == 0 || RunGit(new[] { "-c", "core.quotepath=false", "ls-files" }, dir, out o, out e) != 0)
+                    return;
+                foreach (var line in o.Split('\n'))
+                {
+                    var rel = line.Trim();
+                    if (rel.Length == 0 || lockedByOthers.Contains(rel) || !extensions.Contains(System.IO.Path.GetExtension(rel)))
+                        continue;
+                    SetReadOnly(dir, rel, false);
+                }
+            });
         }
 
         // ----------------- acquire -----------------
@@ -152,8 +199,9 @@ namespace Unity.VersionControl.Git.UI
                         : string.Format("{0} files are locked by other users and were not saved:\n\n{1}",
                             blocked.Length, string.Join("\n", blocked));
                     // During a player build Unity saves assets repeatedly and a modal dialog stalls the whole
-                    // build until someone clicks OK. The save is blocked either way, so just log it.
-                    if (BuildPipeline.isBuildingPlayer)
+                    // build until someone clicks OK. The save is blocked either way, so just log it. Builds
+                    // also save before isBuildingPlayer is set, hence the setting to turn the popup off.
+                    if (BuildPipeline.isBuildingPlayer || !ApplicationConfiguration.LockedSavePopup)
                         Debug.LogWarning("Locked file not saved: " + message);
                     else
                         EditorUtility.DisplayDialog("Locked file not saved", message, "OK");
@@ -631,11 +679,14 @@ namespace Unity.VersionControl.Git.UI
 
         // Set/clear read-only on the asset file only (not its .meta: Unity rewrites .meta on import and a
         // read-only meta can break reimport). repoRelative is the lock path; resolve it against the repo root.
-        private static void SetReadOnly(string repoRelative, bool readOnly)
+        private static void SetReadOnly(string repoRelative, bool readOnly) => SetReadOnly(RepoDir(), repoRelative, readOnly);
+
+        // Thread-safe variant: the caller resolves the repo dir on the main thread.
+        private static void SetReadOnly(string repoDir, string repoRelative, bool readOnly)
         {
             try
             {
-                var full = System.IO.Path.Combine(RepoDir(), repoRelative.Replace('/', System.IO.Path.DirectorySeparatorChar));
+                var full = System.IO.Path.Combine(repoDir, repoRelative.Replace('/', System.IO.Path.DirectorySeparatorChar));
                 if (!System.IO.File.Exists(full))
                     return;
                 var attrs = System.IO.File.GetAttributes(full);
