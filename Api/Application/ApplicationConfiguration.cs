@@ -21,6 +21,12 @@ namespace Unity.VersionControl.Git
         // them read-only on disk. Opt-in but on by default, since silently letting someone edit a file
         // locked by a teammate defeats the point of locking.
         public static bool BlockLockedByOthers { get; set; } = true;
+        // Show a modal popup when a save skips files locked by others. Off: only a Console warning, so
+        // unattended work (builds) isn't stalled by a dialog.
+        public static bool LockedSavePopup { get; set; } = true;
+        // Let Git Waypoint alone decide which files are read-only, turning off git-lfs's own read-only
+        // handling (lfs.setlockablereadonly=false). git-lfs ignores `-lockable` exclusions, Waypoint doesn't.
+        public static bool ManageReadOnly { get; set; } = false;
 
         public static void Initialize(ISettings settings)
         {
@@ -37,6 +43,8 @@ namespace Unity.VersionControl.Git
             BlockOutdatedEdit = settings.Get(Constants.BlockOutdatedEditKey, BlockOutdatedEdit);
             BlockOutdatedCommit = settings.Get(Constants.BlockOutdatedCommitKey, BlockOutdatedCommit);
             BlockLockedByOthers = settings.Get(Constants.BlockLockedByOthersKey, BlockLockedByOthers);
+            LockedSavePopup = settings.Get(Constants.LockedSavePopupKey, LockedSavePopup);
+            ManageReadOnly = settings.Get(Constants.ManageReadOnlyKey, ManageReadOnly);
         }
 
         public enum HierarchyIconAlignment

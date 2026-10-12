@@ -3,6 +3,10 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.9] - 2026-10-12
+- New setting "Popup when a locked file isn't saved" (on by default): turn it off to get only a Console warning when a save skips files locked by teammates, so builds and other unattended work are never stalled by a dialog
+- New setting "Only Git Waypoint makes files read-only" (off by default): turns off git-lfs's own read-only handling for this repository (lfs.setlockablereadonly=false) and clears the read-only flag it left on files nobody else has locked. Files locked by teammates stay read-only, and -lockable exclusions in .gitattributes, which git-lfs ignores, are now respected
+
 ## [0.2.8] - 2026-10-12
 - While a player build is running, saving a file locked by someone else no longer opens a blocking popup: the file is still skipped and a warning is written to the Console, so builds run unattended
 
