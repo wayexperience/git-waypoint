@@ -3,6 +3,10 @@
 All notable changes to Git Waypoint are listed here. Newest first.
 Managed by `release.sh` — do not hand-edit the version headers.
 
+## [0.2.10] - 2026-11-19
+- Discard all, Select all and the search and filter bar now stay visible in the Changes tab however many files have changed: a long list of changes no longer pushes them out of view
+- The top rows of the Locks, History and Branches tabs and the window header no longer get squeezed when their lists are long
+
 ## [0.2.9] - 2026-10-12
 - New setting "Popup when a locked file isn't saved" (on by default): turn it off to get only a Console warning when a save skips files locked by teammates, so builds and other unattended work are never stalled by a dialog
 - New setting "Only Git Waypoint makes files read-only" (off by default): turns off git-lfs's own read-only handling for this repository (lfs.setlockablereadonly=false) and clears the read-only flag it left on files nobody else has locked. Files locked by teammates stay read-only, and -lockable exclusions in .gitattributes, which git-lfs ignores, are now respected

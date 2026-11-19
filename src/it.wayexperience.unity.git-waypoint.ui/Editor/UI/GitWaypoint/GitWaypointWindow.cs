@@ -206,6 +206,7 @@ namespace Unity.VersionControl.Git.UI
         {
             identityBanner = new VisualElement();
             identityBanner.style.display = DisplayStyle.None;
+            identityBanner.style.flexShrink = 0;
             identityBanner.style.flexDirection = FlexDirection.Row;
             identityBanner.style.alignItems = Align.Center;
             identityBanner.style.marginLeft = 10; identityBanner.style.marginRight = 10;
@@ -337,6 +338,7 @@ namespace Unity.VersionControl.Git.UI
             header.style.paddingLeft = 10; header.style.paddingRight = 10;
             header.style.backgroundColor = GitWaypointTheme.Panel;
             Border(header, bottom: 1);
+            header.style.flexShrink = 0;
 
             var branchBox = new VisualElement { style = { flexDirection = FlexDirection.Column, flexGrow = 1, overflow = Overflow.Hidden } };
             var branchRow = Row();
@@ -381,6 +383,7 @@ namespace Unity.VersionControl.Git.UI
             toolbar.style.paddingTop = 6; toolbar.style.paddingBottom = 6;
             toolbar.style.paddingLeft = 10; toolbar.style.paddingRight = 10;
             Border(toolbar, bottom: 1);
+            toolbar.style.flexShrink = 0;
             toolbar.Add(fetchButton = TbButton("Fetch", DoFetch));
             toolbar.Add(pullButton = TbButton("Pull", DoPull));
             toolbar.Add(pushButton = TbButton("Push", DoPush));
@@ -394,6 +397,7 @@ namespace Unity.VersionControl.Git.UI
             var bar = Row();
             bar.style.backgroundColor = GitWaypointTheme.Panel;
             Border(bar, bottom: 1);
+            bar.style.flexShrink = 0;
             foreach (Tab t in Enum.GetValues(typeof(Tab)))
             {
                 var captured = t;
@@ -517,6 +521,7 @@ namespace Unity.VersionControl.Git.UI
             topRow.style.alignItems = Align.Center;
             topRow.style.paddingLeft = 10; topRow.style.paddingRight = 10;
             topRow.style.paddingTop = 8; topRow.style.paddingBottom = 6;
+            topRow.style.flexShrink = 0;
             searchField = new TextField { style = { flexGrow = 1 } };
             SetPlaceholder(searchField, "Search files…");
             Roomy(searchField, 24);
@@ -539,6 +544,9 @@ namespace Unity.VersionControl.Git.UI
             changesSelRow.style.alignItems = Align.Center;
             changesSelRow.style.paddingLeft = 10; changesSelRow.style.paddingRight = 10;
             changesSelRow.style.paddingBottom = 4;
+            // Fixed rows above a list must not shrink: with many changes the list's content height made the
+            // layout squeeze this row (Select all + Discard all) to nothing. The list takes the leftover space.
+            changesSelRow.style.flexShrink = 0;
             selectAllToggle = new Toggle { value = true };
             selectAllToggle.RegisterValueChangedCallback(e => SetAllChecked(e.newValue));
             changesSelRow.Add(selectAllToggle);
@@ -556,6 +564,7 @@ namespace Unity.VersionControl.Git.UI
             outdatedBanner.style.flexDirection = FlexDirection.Row;
             outdatedBanner.style.alignItems = Align.Center;
             outdatedBanner.style.display = DisplayStyle.None;
+            outdatedBanner.style.flexShrink = 0;
             outdatedBanner.style.marginLeft = 10; outdatedBanner.style.marginRight = 10; outdatedBanner.style.marginBottom = 6;
             outdatedBanner.style.paddingTop = 8; outdatedBanner.style.paddingBottom = 8;
             outdatedBanner.style.paddingLeft = 10; outdatedBanner.style.paddingRight = 10;
@@ -579,7 +588,7 @@ namespace Unity.VersionControl.Git.UI
             outdatedBanner.Add(bannerPull);
             tab.Add(outdatedBanner);
 
-            changesList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, minHeight = 0 } };
+            changesList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, flexBasis = 0f, minHeight = 0 } };
             tab.Add(changesList);
 
             emptyLabel = new Label("No changes. Your working tree is clean.")
@@ -867,12 +876,14 @@ namespace Unity.VersionControl.Git.UI
             lockStatsRow = Row();
             lockStatsRow.style.paddingLeft = 10; lockStatsRow.style.paddingRight = 10;
             lockStatsRow.style.paddingTop = 8; lockStatsRow.style.paddingBottom = 6;
+            lockStatsRow.style.flexShrink = 0;
             tab.Add(lockStatsRow);
 
             var filterRow = Row();
             filterRow.style.alignItems = Align.Center;
             filterRow.style.paddingLeft = 10; filterRow.style.paddingRight = 10;
             filterRow.style.paddingBottom = 6;
+            filterRow.style.flexShrink = 0;
             lockSearchField = new TextField { style = { flexGrow = 1, marginLeft = 0, marginRight = 8 } };
             SetPlaceholder(lockSearchField, "Search locked files…");
             Roomy(lockSearchField, 24);
@@ -895,7 +906,7 @@ namespace Unity.VersionControl.Git.UI
             }
             tab.Add(filterRow);
 
-            locksList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, minHeight = 0 } };
+            locksList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, flexBasis = 0f, minHeight = 0 } };
             tab.Add(locksList);
 
             locksEmpty = new Label("No locks match your filters.")
@@ -1122,8 +1133,9 @@ namespace Unity.VersionControl.Git.UI
             var tab = new VisualElement { style = { flexGrow = 1, flexDirection = FlexDirection.Column, display = DisplayStyle.None } };
             historyHeader = new Label("") { style = { color = GitWaypointTheme.Subdued, fontSize = 11, paddingLeft = 10, paddingRight = 10, paddingTop = 8, paddingBottom = 6 } };
             Border(historyHeader, bottom: 1);
+            historyHeader.style.flexShrink = 0;
             tab.Add(historyHeader);
-            historyList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, minHeight = 0 } };
+            historyList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, flexBasis = 0f, minHeight = 0 } };
             tab.Add(historyList);
             historyEmpty = new Label("No history yet.")
             {
@@ -1340,6 +1352,7 @@ namespace Unity.VersionControl.Git.UI
             createRow.style.alignItems = Align.Center;
             createRow.style.paddingLeft = 10; createRow.style.paddingRight = 10;
             createRow.style.paddingTop = 8; createRow.style.paddingBottom = 6;
+            createRow.style.flexShrink = 0;
             newBranchField = new TextField { style = { flexGrow = 1, marginRight = 6 } };
             SetPlaceholder(newBranchField, "New branch name…");
             Roomy(newBranchField, 24);
@@ -1349,7 +1362,7 @@ namespace Unity.VersionControl.Git.UI
             createRow.Add(createBtn);
             tab.Add(createRow);
 
-            branchesList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, minHeight = 0 } };
+            branchesList = new ScrollView { style = { flexGrow = 1, flexShrink = 1, flexBasis = 0f, minHeight = 0 } };
             tab.Add(branchesList);
             branchesEmpty = new Label("No branches.")
             {
